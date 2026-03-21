@@ -116,7 +116,10 @@ def agent_node(state: AgentState) -> dict:
     # Strip any <think>...</think> blocks that qwen3 may still emit
     if isinstance(response.content, str):
         import re as _re
-        cleaned = _re.sub(r"<think>[\s\S]*?</think>", "", response.content, flags=_re.IGNORECASE).strip()
+
+        cleaned = _re.sub(
+            r"<think>[\s\S]*?</think>", "", response.content, flags=_re.IGNORECASE
+        ).strip()
         if cleaned != response.content:
             log.debug(f"[{goal['title']}] Stripped think-block from response.")
             response = response.model_copy(update={"content": cleaned})
