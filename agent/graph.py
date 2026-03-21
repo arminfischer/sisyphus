@@ -106,11 +106,20 @@ def agent_node(state: AgentState) -> dict:
         model=settings.ollama_model,
         temperature=0.3,
         num_predict=2048,
+        think=False,
     ).bind_tools(TOOLS)
 
     system = _build_system_prompt(state["goal"])
     messages = [SystemMessage(content=system)] + state["messages"]
     response = llm.invoke(messages)
+
+    # Strip any <think>...</think> blocks that qwen3 may still emit
+    if isinstance(response.content, str):
+        import re as _re
+        cleaned = _re.sub(r"<think>[\s\S]*?</think>", "", response.content, flags=_re.IGNORECASE).strip()
+        if cleaned != response.content:
+            log.debug(f"[{goal['title']}] Stripped think-block from response.")
+            response = response.model_copy(update={"content": cleaned})
 
     if isinstance(response, AIMessage) and response.tool_calls:
         for tc in response.tool_calls:
