@@ -135,9 +135,20 @@ def agent_node(state: AgentState) -> dict:
 
 
 def store_node(state: AgentState) -> dict:
-    last = state["messages"][-1]
-    summary = last.content if isinstance(last.content, str) else str(last.content)
-    summary = summary.replace("RESEARCH_COMPLETE", "").strip()
+    # Collect all substantive AI text across the conversation, not just the last message.
+    # The model often sends RESEARCH_COMPLETE as a bare final signal with no text.
+    parts = []
+    for msg in state["messages"]:
+        if not isinstance(msg, AIMessage):
+            continue
+        if msg.tool_calls:  # skip pure tool-call frames
+            continue
+        text = msg.content if isinstance(msg.content, str) else ""
+        text = text.replace("RESEARCH_COMPLETE", "").strip()
+        if text:
+            parts.append(text)
+
+    summary = "\n\n".join(parts).strip()
     goal = state["goal"]
 
     doc_id = str(uuid.uuid4())
