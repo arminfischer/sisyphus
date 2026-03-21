@@ -1,4 +1,9 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# When running locally, data lives next to the project root.
+# Inside Docker the volume is mounted at /data (overridden via .env).
+_DEFAULT_DATA = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
 
 class Settings(BaseSettings):
@@ -22,11 +27,11 @@ class Settings(BaseSettings):
     # Dashboard
     dashboard_port: int = 7070
 
-    # Data paths (inside container volume)
-    data_dir: str = "/data"
-    db_path: str = "/data/sisyphus.db"
-    chroma_path: str = "/data/chroma"
-    goals_file: str = "/data/goals.md"
+    # Data paths — default to ./data/ locally, overridden to /data in Docker via .env
+    data_dir: str = _DEFAULT_DATA
+    db_path: str = os.path.join(_DEFAULT_DATA, "sisyphus.db")
+    chroma_path: str = os.path.join(_DEFAULT_DATA, "chroma")
+    goals_file: str = os.path.join(_DEFAULT_DATA, "goals.md")
 
     # Timing
     research_interval_minutes: int = 120
