@@ -10,6 +10,7 @@ Graph topology:
 import json
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -64,6 +65,9 @@ def _build_system_prompt(goal: dict) -> str:
 
     return f"""You are Sisyphus, a persistent autonomous research agent.
 Your purpose is to investigate your assigned goal thoroughly and produce a useful research summary.
+
+TODAY'S DATE: {datetime.now(timezone.utc).strftime("%Y-%m-%d")} (UTC)
+Always search for the most recent information.
 
 ALL ACTIVE GOALS (for context):
 {goals_text}
