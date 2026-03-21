@@ -1,12 +1,11 @@
 """
 OmniMCP client — wraps the MCP server at OMNI_MCP_URL.
 
-The client:
-1. Discovers available tools on startup via discover_tools().
-2. Exposes a single LangChain tool `call_mcp_tool` so the LLM can call any
-   MCP tool by name with a JSON arguments dict.
-3. Tries both the JSON-RPC 2.0 envelope (standard MCP HTTP transport) and a
-   simple REST-style POST as fallback.
+Implements the MCP Streamable HTTP transport (2025 spec):
+  1. POST /  {"jsonrpc":"2.0","method":"initialize",...}  → get session ID from
+     the Mcp-Session-Id response header
+  2. POST /  {"jsonrpc":"2.0","method":"tools/list",...}  with that header
+  3. POST /  {"jsonrpc":"2.0","method":"tools/call",...}  with that header
 """
 
 import json
@@ -18,9 +17,69 @@ from langchain_core.tools import tool
 
 from agent.config import settings
 
+
+def _parse_sse_or_json(resp: httpx.Response) -> dict:
+    """
+    MCP Streamable HTTP servers may return either:
+      - plain JSON body  (Content-Type: application/json)
+      - SSE stream       (Content-Type: text/event-stream)
+        where each message is a line like:  data: {"jsonrpc":...}
+    Returns the parsed dict of the first JSON-RPC message found.
+    """
+    ct = resp.headers.get("content-type", "")
+    text = resp.text.strip()
+    if not text:
+        raise ValueError("Empty response body")
+
+    if "text/event-stream" in ct or text.startswith("data:"):
+        for line in text.splitlines():
+            line = line.strip()
+            if line.startswith("data:"):
+                payload = line[5:].strip()
+                if payload:
+                    return json.loads(payload)
+        raise ValueError(f"No data lines found in SSE response: {text[:200]!r}")
+
+    return json.loads(text)
+
+
 log = logging.getLogger("sisyphus.tools.mcp")
 
 _BASE = settings.omni_mcp_url.rstrip("/")
+
+
+# ── Session initialisation ─────────────────────────────────────────────────────
+
+
+def _get_session_id(client: httpx.Client) -> str | None:
+    """
+    Perform the MCP initialize handshake and return the session ID,
+    or None if the server doesn't require / return one.
+    """
+    try:
+        resp = client.post(
+            _BASE,
+            json={
+                "jsonrpc": "2.0",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "sisyphus", "version": "1.0"},
+                },
+                "id": 0,
+            },
+            headers={"Content-Type": "application/json"},
+        )
+        session_id = resp.headers.get("Mcp-Session-Id") or resp.headers.get(
+            "mcp-session-id"
+        )
+        if session_id:
+            log.info(f"OmniMCP: session initialised ({session_id[:16]}…)")
+        return session_id
+    except Exception as e:
+        log.debug(f"OmniMCP initialize error: {e}")
+        return None
 
 
 # ── Tool discovery ─────────────────────────────────────────────────────────────
@@ -29,31 +88,29 @@ _BASE = settings.omni_mcp_url.rstrip("/")
 @lru_cache(maxsize=1)
 def discover_tools() -> list[dict]:
     """Return the list of tools advertised by OmniMCP (cached after first call)."""
-    try:
-        # Try JSON-RPC 2.0 envelope (standard MCP HTTP transport)
-        with httpx.Client(timeout=8) as client:
+    with httpx.Client(timeout=10) as client:
+
+        # MCP Streamable HTTP: initialize → tools/list with session header
+        session_id = _get_session_id(client)
+        headers = {"Content-Type": "application/json"}
+        if session_id:
+            headers["Mcp-Session-Id"] = session_id
+
+        try:
             resp = client.post(
                 _BASE,
-                json={"jsonrpc": "2.0", "method": "tools/list", "id": 1},
-                headers={"Content-Type": "application/json"},
+                json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1},
+                headers=headers,
             )
             if resp.status_code == 200:
-                data = resp.json()
+                data = _parse_sse_or_json(resp)
                 tools = data.get("result", {}).get("tools", [])
                 if tools:
-                    log.info(f"OmniMCP: discovered {len(tools)} tools via JSON-RPC")
+                    log.info(f"OmniMCP: {len(tools)} tools discovered")
                     return tools
-
-        # Fallback: REST-style GET /tools
-        with httpx.Client(timeout=8) as client:
-            resp = client.get(f"{_BASE}/tools")
-            if resp.status_code == 200:
-                tools = resp.json()
-                if isinstance(tools, list):
-                    log.info(f"OmniMCP: discovered {len(tools)} tools via REST")
-                    return tools
-    except Exception as e:
-        log.warning(f"OmniMCP tool discovery failed: {e}")
+                log.warning(f"OmniMCP tools/list unexpected shape: {data}")
+        except Exception as e:
+            log.warning(f"OmniMCP tool discovery failed: {e}")
 
     return []
 
@@ -84,35 +141,27 @@ def call_mcp_tool(tool_name: str, arguments: str) -> str:
     except json.JSONDecodeError:
         return f"arguments must be valid JSON. Got: {arguments!r}"
 
-    # Try JSON-RPC 2.0 first
-    payload = {
-        "jsonrpc": "2.0",
-        "method": "tools/call",
-        "params": {"name": tool_name, "arguments": args},
-        "id": 1,
-    }
-    try:
-        with httpx.Client(timeout=30) as client:
-            resp = client.post(
-                _BASE,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-            )
+    with httpx.Client(timeout=30) as client:
+        session_id = _get_session_id(client)
+        headers = {"Content-Type": "application/json"}
+        if session_id:
+            headers["Mcp-Session-Id"] = session_id
+
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": args},
+            "id": 1,
+        }
+        try:
+            resp = client.post(_BASE, json=payload, headers=headers)
             if resp.status_code == 200:
-                data = resp.json()
+                data = _parse_sse_or_json(resp)
                 if "result" in data:
                     return json.dumps(data["result"], ensure_ascii=False)
                 if "error" in data:
                     return f"MCP error: {data['error']}"
-
-        # Fallback: REST-style POST /tools/{name}
-        with httpx.Client(timeout=30) as client:
-            resp = client.post(
-                f"{_BASE}/tools/{tool_name}",
-                json={"arguments": args},
-            )
-            resp.raise_for_status()
-            return json.dumps(resp.json(), ensure_ascii=False)
-    except Exception as e:
-        log.warning(f"call_mcp_tool({tool_name}) failed: {e}")
-        return f"MCP tool call failed: {e}"
+            return f"MCP tool call failed: HTTP {resp.status_code} — {resp.text[:200]}"
+        except Exception as e:
+            log.warning(f"call_mcp_tool({tool_name}) failed: {e}")
+            return f"MCP tool call failed: {e}"

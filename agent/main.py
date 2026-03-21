@@ -233,8 +233,16 @@ def main() -> None:
         f"inbox every {settings.inbox_check_interval_minutes}m, "
         f"daily report at {settings.daily_report_hour:02d}:00 UTC"
     )
-    scheduler.start()
+    log.info("Press Ctrl+C to stop.")
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        log.info("Shutting down…")
+        scheduler.shutdown(wait=False)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        pass

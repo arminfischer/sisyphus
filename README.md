@@ -33,12 +33,34 @@ Ollama runs on a separate laptop, exposed on the LAN (`OLLAMA_HOST=0.0.0.0`).
 
 > **Why `qwen3:8b`?** It fits comfortably in 16 GB RAM, has strong tool-use and reasoning, and is the best available Qwen3 size for this hardware. `qwen3:30b` would be too slow without a GPU.
 
-```bash
-# On the laptop — expose Ollama on the LAN
-OLLAMA_HOST=0.0.0.0 ollama serve
+**Windows (no bash required):**
+
+1. Download and run the installer from `https://ollama.com/download/windows` — it starts automatically as a tray app.
+2. By default Ollama only listens on `localhost`. To expose it on the LAN, the tray app must be killed and `ollama serve` launched directly from a shell that has `OLLAMA_HOST` set (the tray app **ignores** system env vars at runtime):
+
+```powershell
+# Kill the tray instance
+Stop-Process -Name "ollama" -Force -ErrorAction SilentlyContinue
+
+# Launch serve with LAN binding in the same shell
+$env:OLLAMA_HOST = "0.0.0.0:11434"
+Start-Process "ollama" -ArgumentList "serve" -NoNewWindow
+```
+
+1. Pull models:
+
+```powershell
 ollama pull qwen3:8b
 ollama pull nomic-embed-text
 ```
+
+1. Verify LAN access (replace IP with your laptop's):
+
+```powershell
+Invoke-RestMethod http://192.168.2.85:11434/api/tags
+```
+
+> To make this permanent: add `OLLAMA_HOST=0.0.0.0:11434` to **System Properties → Environment Variables → System variables**, then sign out and back in so the tray app picks it up on next launch.
 
 ---
 
