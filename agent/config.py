@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     # LLM
     ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "qwen2.5:14b-instruct-q4_K_M"
+    ollama_model: str = "qwen3:8b"
     ollama_embed_model: str = "nomic-embed-text"
 
     # OmniMCP

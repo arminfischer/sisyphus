@@ -1,0 +1,26 @@
+# Secrets — never commit
+.env
+
+# Local data (persistent volume contents)
+data/
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Local staging (used by publish.ps1)
+# D:\sisyphus is outside the repo, but just in case
+*.db
+*.db-shm
+*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
