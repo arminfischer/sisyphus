@@ -1,0 +1,16 @@
+services:
+  sisyphus:
+    build: .
+    container_name: sisyphus
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${DASHBOARD_PORT:-8080}:8080"
+    volumes:
+      - sisyphus_data:/data
+    extra_hosts:
+      # Allows container to reach the host laptop by hostname "host.docker.internal"
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  sisyphus_data:

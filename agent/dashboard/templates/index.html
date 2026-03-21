@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sisyphus</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #0d0d0d;
+        color: #d4d4d4;
+        padding: 2rem 2.5rem;
+        min-height: 100vh;
+      }
+
+      /* Header */
+      header {
+        margin-bottom: 2rem;
+      }
+      header h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #fff;
+        letter-spacing: -0.02em;
+      }
+      header h1 span {
+        color: #6366f1;
+      }
+      .nav {
+        margin-top: 0.4rem;
+        font-size: 0.78rem;
+        color: #555;
+      }
+      .nav a {
+        color: #555;
+        text-decoration: none;
+        margin-right: 1rem;
+      }
+      .nav a:hover {
+        color: #999;
+      }
+
+      /* Stats */
+      .stats {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 2rem;
+      }
+      .stat {
+        background: #161616;
+        border: 1px solid #252525;
+        border-radius: 8px;
+        padding: 0.75rem 1.25rem;
+        min-width: 110px;
+        text-align: center;
+      }
+      .stat-val {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.1;
+      }
+      .stat-label {
+        font-size: 0.72rem;
+        color: #666;
+        margin-top: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* Grid */
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.25rem;
+      }
+      @media (max-width: 860px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .full {
+        grid-column: 1 / -1;
+      }
+
+      /* Card */
+      .card {
+        background: #161616;
+        border: 1px solid #252525;
+        border-radius: 10px;
+        padding: 1.25rem;
+      }
+      .card-title {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #666;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .card-title a {
+        color: #444;
+        font-size: 0.75rem;
+        text-decoration: none;
+      }
+      .card-title a:hover {
+        color: #777;
+      }
+
+      /* Goal rows */
+      .goal {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid #1e1e1e;
+      }
+      .goal:last-child {
+        border-bottom: none;
+      }
+      .badge {
+        background: #1e2a5e;
+        color: #818cf8;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 0.15rem 0.45rem;
+        border-radius: 4px;
+        white-space: nowrap;
+        margin-top: 0.1rem;
+      }
+      .goal-title {
+        font-size: 0.9rem;
+        color: #e0e0e0;
+      }
+      .goal-desc {
+        font-size: 0.78rem;
+        color: #666;
+        margin-top: 0.2rem;
+        line-height: 1.4;
+      }
+
+      /* Log entries */
+      .entry {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #1e1e1e;
+      }
+      .entry:last-child {
+        border-bottom: none;
+      }
+      .entry-meta {
+        font-size: 0.7rem;
+        color: #555;
+        margin-bottom: 0.3rem;
+      }
+      .entry-meta .tag {
+        display: inline-block;
+        background: #1a2e1a;
+        color: #6ee7b7;
+        padding: 0.05rem 0.35rem;
+        border-radius: 3px;
+        margin-left: 0.4rem;
+        font-size: 0.68rem;
+      }
+      .entry-text {
+        font-size: 0.82rem;
+        color: #b0b0b0;
+        line-height: 1.55;
+      }
+
+      /* Empty state */
+      .empty {
+        color: #444;
+        font-size: 0.82rem;
+        padding: 0.5rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>&#9883; <span>Sisyphus</span></h1>
+      <nav class="nav">
+        <a href="/goals">/goals</a>
+        <a href="/log">/log</a>
+        <a href="/memory/search?q=research">/memory</a>
+        <a href="/health">/health</a>
+        <a href="javascript:location.reload()">↺ refresh</a>
+      </nav>
+    </header>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val">{{ goals | length }}</div>
+        <div class="stat-label">Active Goals</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">{{ research | length }}</div>
+        <div class="stat-label">Recent Research</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">{{ mem_count }}</div>
+        <div class="stat-label">Memory Docs</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val">{{ emails | length }}</div>
+        <div class="stat-label">Emails Sent</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Goals column -->
+      <div class="card">
+        <div class="card-title">
+          Active Goals
+          <a href="/goals">JSON</a>
+        </div>
+        {% if goals %} {% for g in goals %}
+        <div class="goal">
+          <span class="badge">P{{ g.priority }}</span>
+          <div>
+            <div class="goal-title">{{ g.title }}</div>
+            {% if g.description %}
+            <div class="goal-desc">
+              {{ g.description[:140] }}{% if g.description | length > 140 %}…{%
+              endif %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %} {% else %}
+        <p class="empty">
+          No goals yet. Add goals to <code>data/goals.md</code> or email the
+          agent.
+        </p>
+        {% endif %}
+      </div>
+
+      <!-- Emails column -->
+      <div class="card">
+        <div class="card-title">Emails Sent (last 5)</div>
+        {% if emails %} {% for e in emails %}
+        <div class="entry">
+          <div class="entry-meta">
+            {{ e.created_at.strftime('%Y-%m-%d %H:%M') }} UTC
+          </div>
+          <div class="entry-text">{{ e.subject }}</div>
+        </div>
+        {% endfor %} {% else %}
+        <p class="empty">No emails sent yet.</p>
+        {% endif %}
+      </div>
+
+      <!-- Research log (full width) -->
+      <div class="card full">
+        <div class="card-title">
+          Recent Research Log
+          <a href="/log">JSON</a>
+        </div>
+        {% if research %} {% for r in research %}
+        <div class="entry">
+          <div class="entry-meta">
+            {{ r.created_at.strftime('%Y-%m-%d %H:%M') }} UTC {% if r.goal_id
+            %}<span class="tag">goal #{{ r.goal_id }}</span>{% endif %}
+          </div>
+          <div class="entry-text">
+            {{ r.summary[:500] }}{% if r.summary | length > 500 %}…{% endif %}
+          </div>
+        </div>
+        {% endfor %} {% else %}
+        <p class="empty">
+          No research logged yet. The agent will populate this after the first
+          research cycle.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+    <!-- /grid -->
+  </body>
+</html>
