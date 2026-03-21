@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Email
     gmail_user: str = ""
     gmail_app_password: str = ""
-    notify_email: str = "armin.h.g.fischer@proton.me"
+    notify_email: str = ""
 
     # Dashboard
     dashboard_port: int = 7070
