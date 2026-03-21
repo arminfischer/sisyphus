@@ -12,10 +12,11 @@ Starts:
 import logging
 import re
 import threading
+import time
 from datetime import datetime, timezone
 
 import uvicorn
-from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
@@ -144,13 +145,16 @@ def send_report() -> None:
 
 
 def _start_dashboard() -> None:
-    uvicorn.run(
-        "agent.dashboard.app:app",
-        host="0.0.0.0",
-        port=settings.dashboard_port,
-        log_level="warning",
-        reload=False,
-    )
+    try:
+        uvicorn.run(
+            "agent.dashboard.app:app",
+            host="0.0.0.0",
+            port=settings.dashboard_port,
+            log_level="warning",
+            reload=False,
+        )
+    except Exception as exc:
+        log.error(f"Dashboard failed to start on port {settings.dashboard_port}: {exc}")
 
 
 # ── Startup health checks ─────────────────────────────────────────────────────
@@ -208,7 +212,7 @@ def main() -> None:
     log.info(f"Dashboard running on http://0.0.0.0:{settings.dashboard_port}")
 
     # Build scheduler
-    scheduler = BlockingScheduler(timezone="UTC")
+    scheduler = BackgroundScheduler(timezone="UTC")
 
     scheduler.add_job(
         check_inbox,
@@ -236,6 +240,8 @@ def main() -> None:
     log.info("Press Ctrl+C to stop.")
     try:
         scheduler.start()
+        while True:
+            time.sleep(1)
     except (KeyboardInterrupt, SystemExit):
         log.info("Shutting down…")
         scheduler.shutdown(wait=False)

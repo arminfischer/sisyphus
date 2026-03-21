@@ -1,6 +1,7 @@
 import smtplib
 import imaplib
 import email
+import email.utils
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -66,10 +67,12 @@ def send_test_email() -> None:
 
 def fetch_unread_feedback() -> list[dict]:
     """
-    Connect to Gmail via IMAP, fetch all unread messages, mark them read,
-    and return them as a list of {subject, body} dicts.
+    Connect to Gmail via IMAP, fetch unread messages, mark them read,
+    and return only those sent FROM NOTIFY_EMAIL as {subject, body} dicts.
+    Messages from any other sender are marked read and silently discarded.
     """
     messages: list[dict] = []
+    trusted = settings.notify_email.lower().strip()
     try:
         mail = imaplib.IMAP4_SSL("imap.gmail.com", 993)
         mail.login(settings.gmail_user, settings.gmail_app_password)
@@ -84,11 +87,18 @@ def fetch_unread_feedback() -> list[dict]:
             raw = msg_data[0][1]
             msg = email.message_from_bytes(raw)
 
+            # Always mark as read so it doesn't pile up
+            mail.store(uid, "+FLAGS", "\\Seen")
+
+            sender = email.utils.parseaddr(msg.get("From", ""))[1].lower().strip()
+            if sender != trusted:
+                log.info(f"Ignored message from untrusted sender: {sender!r}")
+                continue
+
             subject = msg.get("Subject", "")
             body = _extract_text_body(msg)
 
             messages.append({"subject": subject, "body": body})
-            mail.store(uid, "+FLAGS", "\\Seen")
 
             with get_session() as session:
                 session.add(EmailLog(direction="received", subject=subject, body=body))
