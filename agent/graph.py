@@ -34,6 +34,7 @@ MAX_ITERATIONS = 8  # guard against infinite loops
 
 # ── State ──────────────────────────────────────────────────────────────────────
 
+
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
     goal: dict
@@ -42,11 +43,15 @@ class AgentState(TypedDict):
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
+
 def _build_system_prompt(goal: dict) -> str:
     all_goals = load_goals()
-    goals_text = "\n".join(
-        f"  [{g['priority']}] {g['title']}: {g['description']}" for g in all_goals
-    ) or "  (none yet)"
+    goals_text = (
+        "\n".join(
+            f"  [{g['priority']}] {g['title']}: {g['description']}" for g in all_goals
+        )
+        or "  (none yet)"
+    )
 
     memories = search(f"{goal['title']} {goal.get('description', '')}", n_results=4)
     memory_text = (
@@ -84,7 +89,14 @@ INSTRUCTIONS:
 
 # ── Nodes ─────────────────────────────────────────────────────────────────────
 
+
 def agent_node(state: AgentState) -> dict:
+    iteration = state["iteration"] + 1
+    goal = state["goal"]
+    log.info(
+        f"[{goal['title']}] LLM thinking... (iteration {iteration}/{MAX_ITERATIONS})"
+    )
+
     llm = ChatOllama(
         base_url=settings.ollama_host,
         model=settings.ollama_model,
@@ -95,7 +107,15 @@ def agent_node(state: AgentState) -> dict:
     system = _build_system_prompt(state["goal"])
     messages = [SystemMessage(content=system)] + state["messages"]
     response = llm.invoke(messages)
-    return {"messages": [response], "iteration": state["iteration"] + 1}
+
+    if isinstance(response, AIMessage) and response.tool_calls:
+        for tc in response.tool_calls:
+            args_preview = str(tc.get("args", {}))[:120]
+            log.info(f"[{goal['title']}] Tool call → {tc['name']}({args_preview})")
+    elif isinstance(response.content, str) and "RESEARCH_COMPLETE" in response.content:
+        log.info(f"[{goal['title']}] Agent finished research.")
+
+    return {"messages": [response], "iteration": iteration}
 
 
 def store_node(state: AgentState) -> dict:
@@ -124,11 +144,15 @@ def store_node(state: AgentState) -> dict:
         )
         session.commit()
 
-    log.info(f"Research stored for goal: {goal['title']} ({len(summary)} chars)")
+    log.info(
+        f"[{goal['title']}] Research stored ({len(summary)} chars). View at http://localhost:{settings.dashboard_port}/log"
+    )
+    log.info(f"[{goal['title']}] Summary preview: {summary[:300].strip()}...")
     return {}
 
 
 # ── Routing ───────────────────────────────────────────────────────────────────
+
 
 def should_continue(state: AgentState) -> str:
     last = state["messages"][-1]
@@ -153,6 +177,7 @@ def should_continue(state: AgentState) -> str:
 
 # ── Graph assembly ─────────────────────────────────────────────────────────────
 
+
 def build_graph():
     g = StateGraph(AgentState)
     g.add_node("agent", agent_node)
@@ -173,6 +198,7 @@ def build_graph():
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
+
 def run_research_cycle(goal: dict) -> tuple[str, bool]:
     """
     Run one full research cycle for the given goal.
@@ -186,9 +212,7 @@ def run_research_cycle(goal: dict) -> tuple[str, bool]:
     initial_msg = HumanMessage(
         content=f"Research goal: {goal['title']}\n{goal.get('description', '')}"
     )
-    result = graph_app.invoke(
-        {"messages": [initial_msg], "goal": goal, "iteration": 0}
-    )
+    result = graph_app.invoke({"messages": [initial_msg], "goal": goal, "iteration": 0})
 
     last = result["messages"][-1]
     summary = last.content if isinstance(last.content, str) else str(last.content)

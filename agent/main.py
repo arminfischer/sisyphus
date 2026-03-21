@@ -224,6 +224,7 @@ def main() -> None:
         run_research,
         IntervalTrigger(minutes=settings.research_interval_minutes),
         id="research",
+        next_run_time=datetime.now(timezone.utc),  # run immediately on start
     )
     scheduler.add_job(
         send_report,
