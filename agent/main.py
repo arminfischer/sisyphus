@@ -43,6 +43,7 @@ log = logging.getLogger("sisyphus")
 
 # ── Scheduled jobs ────────────────────────────────────────────────────────────
 
+
 def check_inbox() -> None:
     log.info("Checking inbox for feedback…")
     messages = fetch_unread_feedback()
@@ -141,6 +142,7 @@ def send_report() -> None:
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
+
 def _start_dashboard() -> None:
     uvicorn.run(
         "agent.dashboard.app:app",
@@ -152,6 +154,7 @@ def _start_dashboard() -> None:
 
 
 # ── Startup health checks ─────────────────────────────────────────────────────
+
 
 def _check_ollama() -> None:
     try:
@@ -187,6 +190,7 @@ def _seed_goals_from_file() -> None:
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     log.info("=" * 60)

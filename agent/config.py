@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     notify_email: str = "armin.h.g.fischer@proton.me"
 
     # Dashboard
-    dashboard_port: int = 8080
+    dashboard_port: int = 7070
 
     # Data paths (inside container volume)
     data_dir: str = "/data"
