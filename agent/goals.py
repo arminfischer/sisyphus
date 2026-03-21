@@ -39,7 +39,6 @@ def save_goal(title: str, description: str = "", priority: int = 5) -> int:
         session.commit()
         session.refresh(goal)
         gid = goal.id
-    _sync_goals_file()
     return gid
 
 
@@ -51,7 +50,6 @@ def update_goal(goal_id: int, **kwargs) -> None:
                 setattr(goal, k, v)
             goal.updated_at = datetime.now(timezone.utc)
             session.commit()
-    _sync_goals_file()
 
 
 def deactivate_goal(goal_id: int) -> None:
@@ -159,6 +157,7 @@ Omit any key that has no changes."""
             deactivate_goal(gid)
             log.info(f"Goal {gid} deactivated")
 
+        _sync_goals_file()  # sync file after feedback-driven changes
         return data.get("summary", "Goals updated.")
     except Exception as e:
         log.warning(f"Could not parse goal update response: {e}")

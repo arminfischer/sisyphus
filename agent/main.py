@@ -33,6 +33,7 @@ from agent.goals import (
     save_goal,
     update_goal,
     update_goals_from_feedback,
+    _sync_goals_file,
 )
 from agent.graph import run_research_cycle
 from agent.memory.db import ResearchLog, get_session, init_db
@@ -221,6 +222,9 @@ def _seed_goals_from_file() -> None:
         else:
             save_goal(g["title"], g.get("description", ""), g.get("priority", 5))
             log.info(f"Added goal from goals.md: {g['title']!r}")
+
+    # Single authoritative sync back to file after all DB changes are done
+    _sync_goals_file()
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
