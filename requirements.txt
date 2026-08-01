@@ -1,28 +1,28 @@
 # LLM & Agent framework
-langgraph>=0.2.0
-langchain>=0.3.0
-langchain-core>=0.3.0
-langchain-ollama>=0.2.0
-langchain-community>=0.3.0
+langgraph>=1.2.10
+langchain>=1.3.14
+langchain-core>=1.5.3
+langchain-ollama>=1.1.0
+langchain-community>=0.4.2
 
 # Memory
-chromadb>=0.5.0
-sqlalchemy>=2.0.0
+chromadb>=1.5.9
+sqlalchemy>=2.0.51
 
 # Scheduling
-apscheduler>=3.10.0
+apscheduler>=3.11.3
 
 # Tools
-ddgs>=0.1.0
-pymupdf>=1.24.0
+ddgs>=9.14.4
+pymupdf>=1.28.0
 
 # HTTP
-httpx>=0.27.0
+httpx>=0.28.1
 
 # Dashboard
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-jinja2>=3.1.0
+fastapi>=0.141.1
+uvicorn[standard]>=0.52.0
+jinja2>=3.1.5
 
 # Config
-pydantic-settings>=2.0.0
+pydantic-settings>=2.14.2
