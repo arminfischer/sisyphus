@@ -13,13 +13,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # LLM
-    ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "qwen3:8b"
-    ollama_embed_model: str = "nomic-embed-text"
-
-    # OmniMCP
-    omni_mcp_url: str = "http://192.168.2.117:9090"
+    # LLM — llama-server (OpenAI-compatible API)
+    # Start locally with:
+    #   llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --port 8080
+    llm_base_url: str = "http://localhost:8080/v1"
+    llm_model: str = "gemma-4-E2B-it"
+    llm_api_key: str = (
+        "not-needed"  # llama-server ignores this, but the client requires a value
+    )
 
     # Email
     gmail_user: str = ""

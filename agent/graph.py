@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
@@ -23,13 +23,12 @@ from agent.config import settings
 from agent.goals import load_goals
 from agent.memory.db import ResearchLog, get_session
 from agent.memory.vector import add_document, search
-from agent.tools.mcp_client import call_mcp_tool, tools_summary
 from agent.tools.pdf_reader import read_pdf
 from agent.tools.web_search import web_search
 
 log = logging.getLogger("sisyphus.graph")
 
-TOOLS = [web_search, read_pdf, call_mcp_tool]
+TOOLS = [web_search, read_pdf]
 MAX_ITERATIONS = 8  # guard against infinite loops
 
 
@@ -61,8 +60,6 @@ def _build_system_prompt(goal: dict) -> str:
         else "  (no relevant past research yet)"
     )
 
-    mcp_text = tools_summary()
-
     return f"""You are Sisyphus, a persistent autonomous research agent.
 Your purpose is to investigate your assigned goal thoroughly and produce a useful research summary.
 
@@ -75,14 +72,12 @@ ALL ACTIVE GOALS (for context):
 RELEVANT PAST RESEARCH (from memory):
 {memory_text}
 
-{mcp_text}
-
 CURRENT GOAL TO RESEARCH NOW:
 Title: {goal['title']}
 Description: {goal.get('description', '(no description)')}
 
 INSTRUCTIONS:
-- Use web_search, read_pdf, and call_mcp_tool tools as needed.
+- Use web_search and read_pdf tools as needed.
 - Prefer multiple focused searches over one broad one.
 - After researching, write a clear, structured summary of your findings.
 - If you are unsure about something important and need the user's input,
@@ -101,28 +96,17 @@ def agent_node(state: AgentState) -> dict:
         f"[{goal['title']}] LLM thinking... (iteration {iteration}/{MAX_ITERATIONS})"
     )
 
-    llm = ChatOllama(
-        base_url=settings.ollama_host,
-        model=settings.ollama_model,
+    llm = ChatOpenAI(
+        base_url=settings.llm_base_url,
+        model=settings.llm_model,
+        api_key=settings.llm_api_key,
         temperature=0.3,
-        num_predict=2048,
-        think=False,
+        max_tokens=2048,
     ).bind_tools(TOOLS)
 
     system = _build_system_prompt(state["goal"])
     messages = [SystemMessage(content=system)] + state["messages"]
     response = llm.invoke(messages)
-
-    # Strip any <think>...</think> blocks that qwen3 may still emit
-    if isinstance(response.content, str):
-        import re as _re
-
-        cleaned = _re.sub(
-            r"<think>[\s\S]*?</think>", "", response.content, flags=_re.IGNORECASE
-        ).strip()
-        if cleaned != response.content:
-            log.debug(f"[{goal['title']}] Stripped think-block from response.")
-            response = response.model_copy(update={"content": cleaned})
 
     if isinstance(response, AIMessage) and response.tool_calls:
         for tc in response.tool_calls:

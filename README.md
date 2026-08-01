@@ -7,15 +7,13 @@ A permanent, autonomous local research agent. Runs 24/7 in Docker on a Synology 
 ## Architecture
 
 ```
-[Laptop — Ollama LLM server (16 GB RAM)]
-        ↕ local network
+[Local machine — llama-server (gemma-4-E2B-it, port 8080)]
+        ↕
 [Synology NAS — Docker]
   ├── sisyphus agent  (LangGraph research loop)
   ├── ChromaDB        (semantic vector memory, embedded)
   ├── SQLite          (goals, research log, email history)
   └── FastAPI         (read-only dashboard, port 7070)
-        ↕
-[OmniMCP at 192.168.2.117:9090]
         ↕
 [Gmail SMTP/IMAP → your inbox]
 ```
@@ -24,43 +22,29 @@ A permanent, autonomous local research agent. Runs 24/7 in Docker on a Synology 
 
 ## LLM Stack
 
-Ollama runs on a separate laptop, exposed on the LAN (`OLLAMA_HOST=0.0.0.0`).
+The agent talks to **llama-server** (from llama.cpp), which exposes an OpenAI-compatible API on the local machine.
 
-| Role | Model | RAM |
-|---|---|---|
-| Primary reasoning + tool use | `qwen3:8b` | ~5 GB |
-| Embeddings | `nomic-embed-text` | ~300 MB |
+| Role | Model |
+|---|---|
+| Primary reasoning + tool use | `gemma-4-E2B-it` (GGUF) |
 
-> **Why `qwen3:8b`?** It fits comfortably in 16 GB RAM, has strong tool-use and reasoning, and is the best available Qwen3 size for this hardware. `qwen3:30b` would be too slow without a GPU.
+> **Why `gemma-4-E2B-it`?** A compact, capable instruction-tuned model that runs comfortably on the local machine via llama.cpp's OpenAI-compatible server.
 
-**Windows (no bash required):**
-
-1. Download and run the installer from `https://ollama.com/download/windows` — it starts automatically as a tray app.
-2. By default Ollama only listens on `localhost`. To expose it on the LAN, the tray app must be killed and `ollama serve` launched directly from a shell that has `OLLAMA_HOST` set (the tray app **ignores** system env vars at runtime):
+**Start the server locally:**
 
 ```powershell
-# Kill the tray instance
-Stop-Process -Name "ollama" -Force -ErrorAction SilentlyContinue
-
-# Launch serve with LAN binding in the same shell
-$env:OLLAMA_HOST = "0.0.0.0:11434"
-Start-Process "ollama" -ArgumentList "serve" -NoNewWindow
+llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --port 8080
 ```
 
-1. Pull models:
+This downloads the model from Hugging Face on first run and serves it at `http://127.0.0.1:8080` (OpenAI-compatible `/v1/chat/completions` endpoint).
+
+Verify it is up:
 
 ```powershell
-ollama pull qwen3:8b
-ollama pull nomic-embed-text
+Invoke-RestMethod http://localhost:8080/v1/models
 ```
 
-1. Verify LAN access (replace IP with your laptop's):
-
-```powershell
-Invoke-RestMethod http://192.168.2.85:11434/api/tags
-```
-
-> To make this permanent: add `OLLAMA_HOST=0.0.0.0:11434` to **System Properties → Environment Variables → System variables**, then sign out and back in so the tray app picks it up on next launch.
+The agent connects via `LLM_BASE_URL=http://localhost:8080/v1` (set in `.env`). When running the agent in Docker on the same machine, use `http://host.docker.internal:8080/v1` instead — the `host.docker.internal` alias is already configured in `docker-compose.yml`.
 
 ---
 
@@ -86,8 +70,7 @@ sisyphus/
     │   └── vector.py        # ChromaDB semantic memory
     ├── tools/
     │   ├── web_search.py    # DuckDuckGo (no API key required)
-    │   ├── pdf_reader.py    # fetch + extract text from PDF URLs
-    │   └── mcp_client.py    # OmniMCP HTTP client (auto-discovers tools)
+    │   └── pdf_reader.py    # fetch + extract text from PDF URLs
     └── dashboard/
         ├── app.py           # FastAPI read-only dashboard
         └── templates/
@@ -107,10 +90,10 @@ Copy-Item .env.example .env
 Key variables:
 
 | Variable | Description |
-|---|---|
-| `OLLAMA_HOST` | LAN IP of the laptop running Ollama, e.g. `http://192.168.2.100:11434` |
-| `OLLAMA_MODEL` | Model name, e.g. `qwen2.5:14b-instruct-q4_K_M` |
-| `OMNI_MCP_URL` | OmniMCP server, e.g. `http://192.168.2.117:9090` |
+| --- | --- |
+| `LLM_BASE_URL` | llama-server OpenAI-compatible endpoint, e.g. `http://localhost:8080/v1` |
+| `LLM_MODEL` | Model name, e.g. `gemma-4-E2B-it` |
+| `LLM_API_KEY` | API key (ignored by llama-server; defaults to `not-needed`) |
 | `GMAIL_USER` | Dedicated agent Gmail account |
 | `GMAIL_APP_PASSWORD` | Gmail App Password (see below) |
 | `NOTIFY_EMAIL` | Where to send reports and feedback requests |
@@ -221,7 +204,7 @@ The live `data/` directory and `.env` on the NAS are **never overwritten** by th
 ### Scheduler loop
 
 | Job | Frequency | Action |
-|---|---|---|
+| --- | --- | --- |
 | `check_inbox` | Every 15 min | Polls Gmail IMAP for replies; passes content to LLM → updates goals |
 | `run_research` | Every 2 hours | Runs a LangGraph research cycle for each active goal |
 | `send_report` | Daily at 08:00 UTC | Compiles and emails a summary of recent research |
@@ -233,7 +216,7 @@ agent → (tool calls?) → tools → agent
       → (RESEARCH_COMPLETE) → store → END
 ```
 
-The agent plans, calls `web_search` / `read_pdf` / `call_mcp_tool` as needed, then writes findings to ChromaDB (semantic memory) and SQLite (research log).
+The agent plans, calls `web_search` / `read_pdf` as needed, then writes findings to ChromaDB (semantic memory) and SQLite (research log).
 
 ### Memory
 
@@ -275,7 +258,7 @@ Read-only web UI at `http://nas-ip:7070`:
 API endpoints:
 
 | Endpoint | Description |
-|---|---|
+| --- | --- |
 | `GET /goals` | Active goals as JSON |
 | `GET /log?limit=20` | Research log as JSON |
 | `GET /memory/search?q=...` | Semantic memory search |

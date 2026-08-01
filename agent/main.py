@@ -54,11 +54,12 @@ def check_inbox() -> None:
     if not messages:
         return
 
-    from langchain_ollama import ChatOllama
+    from langchain_openai import ChatOpenAI
 
-    llm = ChatOllama(
-        base_url=settings.ollama_host,
-        model=settings.ollama_model,
+    llm = ChatOpenAI(
+        base_url=settings.llm_base_url,
+        model=settings.llm_model,
+        api_key=settings.llm_api_key,
         temperature=0.1,
     )
 
@@ -163,28 +164,22 @@ def _start_dashboard() -> None:
 # ── Startup health checks ─────────────────────────────────────────────────────
 
 
-def _check_ollama() -> None:
+def _check_llm() -> None:
     try:
-        from langchain_ollama import ChatOllama
+        from langchain_openai import ChatOpenAI
 
-        llm = ChatOllama(
-            base_url=settings.ollama_host, model=settings.ollama_model, num_predict=5
+        llm = ChatOpenAI(
+            base_url=settings.llm_base_url,
+            model=settings.llm_model,
+            api_key=settings.llm_api_key,
+            max_tokens=5,
         )
         llm.invoke("Say: OK")
-        log.info(f"Ollama ✓  ({settings.ollama_host}, model={settings.ollama_model})")
+        log.info(
+            f"llama-server ✓  ({settings.llm_base_url}, model={settings.llm_model})"
+        )
     except Exception as exc:
-        log.warning(f"Ollama not reachable on startup: {exc}")
-
-
-def _check_mcp() -> None:
-    from agent.tools.mcp_client import discover_tools
-
-    tools = discover_tools()
-    if tools:
-        names = [t.get("name", "?") for t in tools]
-        log.info(f"OmniMCP ✓  {len(tools)} tools: {names}")
-    else:
-        log.warning(f"OmniMCP unreachable or no tools at {settings.omni_mcp_url}")
+        log.warning(f"llama-server not reachable on startup: {exc}")
 
 
 def _seed_goals_from_file() -> None:
@@ -237,8 +232,7 @@ def main() -> None:
 
     init_db()
     _seed_goals_from_file()
-    _check_ollama()
-    _check_mcp()
+    _check_llm()
 
     # Start dashboard in background thread
     dashboard_thread = threading.Thread(target=_start_dashboard, daemon=True)
