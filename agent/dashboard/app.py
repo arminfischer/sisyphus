@@ -141,11 +141,7 @@ async def api_log(limit: int = 20):
 async def research_detail(request: Request, entry_id: int):
     """Full research entry with rendered markdown."""
     with get_session() as session:
-        entry = (
-            session.query(ResearchLog)
-            .filter(ResearchLog.id == entry_id)
-            .first()
-        )
+        entry = session.query(ResearchLog).filter(ResearchLog.id == entry_id).first()
         if not entry:
             raise HTTPException(status_code=404, detail="Research entry not found")
         goal = get_goal(entry.goal_id) if entry.goal_id else None

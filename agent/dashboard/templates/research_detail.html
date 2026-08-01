@@ -210,7 +210,8 @@
       <span>{{ entry.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</span>
       {% if entry.goal_id %}
       <a class="tag goal-link" href="/#goal-{{ entry.goal_id }}"
-        >goal #{{ entry.goal_id }}{% if entry.goal %}: {{ entry.goal.title }}{% endif %}</a
+        >goal #{{ entry.goal_id }}{% if entry.goal %}: {{ entry.goal.title }}{%
+        endif %}</a
       >
       {% else %}
       <span class="tag">no goal</span>
