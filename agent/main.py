@@ -28,6 +28,7 @@ from agent.email_handler import (
 )
 from agent.goals import (
     load_goals,
+    update_goals_from_feedback,
 )
 from agent.graph import run_research_cycle
 from agent.memory.db import ResearchLog, get_session, init_db

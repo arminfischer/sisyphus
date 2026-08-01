@@ -1,12 +1,14 @@
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request
+import markdown
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from agent.goals import (
     deactivate_goal,
     delete_goal,
+    get_goal,
     load_goals,
     save_goal,
     update_goal,
@@ -133,6 +135,36 @@ async def api_log(limit: int = 20):
             }
             for e in entries
         ]
+
+
+@app.get("/research/{entry_id}", response_class=HTMLResponse)
+async def research_detail(request: Request, entry_id: int):
+    """Full research entry with rendered markdown."""
+    with get_session() as session:
+        entry = (
+            session.query(ResearchLog)
+            .filter(ResearchLog.id == entry_id)
+            .first()
+        )
+        if not entry:
+            raise HTTPException(status_code=404, detail="Research entry not found")
+        goal = get_goal(entry.goal_id) if entry.goal_id else None
+        rendered = markdown.markdown(
+            entry.summary or "",
+            extensions=["fenced_code", "tables", "toc", "sane_lists"],
+        )
+        data = {
+            "id": entry.id,
+            "goal_id": entry.goal_id,
+            "summary": entry.summary,
+            "summary_html": rendered,
+            "created_at": entry.created_at,
+            "goal": goal,
+        }
+    return templates.TemplateResponse(
+        "research_detail.html",
+        {"request": request, "entry": data},
+    )
 
 
 @app.get("/memory/search")

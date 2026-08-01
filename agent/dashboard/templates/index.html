@@ -395,16 +395,16 @@
             <form
               method="post"
               action="/goals/{{ g.id }}/deactivate"
-              style="display:inline"
-              onsubmit="return confirm('Deactivate this goal?')"
+              style="display: inline"
+              onsubmit="return confirm('Deactivate this goal?');"
             >
               <button class="btn" type="submit">⊘ deactivate</button>
             </form>
             <form
               method="post"
               action="/goals/{{ g.id }}/delete"
-              style="display:inline"
-              onsubmit="return confirm('Permanently delete this goal?')"
+              style="display: inline"
+              onsubmit="return confirm('Permanently delete this goal?');"
             >
               <button class="btn btn-danger" type="submit">✕ delete</button>
             </form>
@@ -422,7 +422,9 @@
                 value="{{ g.priority }}"
               />
               <label>Description</label>
-              <textarea name="description" rows="3">{{ g.description }}</textarea>
+              <textarea name="description" rows="3">
+{{ g.description }}</textarea
+              >
               <label>Rationale (why pursue this / approach)</label>
               <textarea name="rationale" rows="3">{{ g.rationale }}</textarea>
               <div class="form-actions">
@@ -449,7 +451,11 @@
           <div class="new-goal-toggle">
             <button
               class="btn btn-primary"
-              onclick="document.getElementById('new-goal-form').classList.toggle('open')"
+              onclick="
+                document
+                  .getElementById('new-goal-form')
+                  .classList.toggle('open')
+              "
             >
               + New Goal
             </button>
@@ -502,8 +508,18 @@
         {% if research %} {% for r in research %}
         <div class="entry">
           <div class="entry-meta">
-            {{ r.created_at.strftime('%Y-%m-%d %H:%M') }} UTC {% if r.goal_id
-            %}<span class="tag">goal #{{ r.goal_id }}</span>{% endif %}
+            <a
+              href="/research/{{ r.id }}"
+              style="color: #818cf8; text-decoration: none"
+              >{{ r.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</a
+            >
+            {% if r.goal_id %}<span class="tag">goal #{{ r.goal_id }}</span>{%
+            endif %}
+            <a
+              href="/research/{{ r.id }}"
+              style="color: #555; font-size: 0.68rem; margin-left: 0.4rem"
+              >view full →</a
+            >
           </div>
           <div class="entry-text">
             {{ r.summary[:500] }}{% if r.summary | length > 500 %}…{% endif %}

@@ -203,7 +203,9 @@ Be demanding. Only return "sufficient" if the summary genuinely answers the
 goal and rationale with adequate depth and sourcing."""
 
     response = llm.invoke(prompt)
-    raw = response.content if isinstance(response.content, str) else str(response.content)
+    raw = (
+        response.content if isinstance(response.content, str) else str(response.content)
+    )
 
     import re as _re
     import json as _json
@@ -258,17 +260,19 @@ def store_node(state: AgentState) -> dict:
     )
 
     with get_session() as session:
-        session.add(
-            ResearchLog(
-                goal_id=goal.get("id"),
-                summary=summary,
-                sources=json.dumps([]),
-            )
+        log_entry = ResearchLog(
+            goal_id=goal.get("id"),
+            summary=summary,
+            sources=json.dumps([]),
         )
+        session.add(log_entry)
         session.commit()
+        session.refresh(log_entry)
+        entry_id = log_entry.id
 
     log.info(
-        f"[{goal['title']}] Research stored ({len(summary)} chars). View at http://localhost:{settings.dashboard_port}/log"
+        f"[{goal['title']}] Research stored ({len(summary)} chars). "
+        f"View at http://localhost:{settings.dashboard_port}/research/{entry_id}"
     )
     log.info(f"[{goal['title']}] Summary preview: {summary[:300].strip()}...")
     return {}
@@ -321,13 +325,15 @@ def build_graph():
     # accepted the research (or hit the round limit), route to "store".
     g.add_conditional_edges(
         "critique",
-        lambda state: "agent"
-        if any(
-            isinstance(m, HumanMessage)
-            and "INSUFFICIENT" in (m.content if isinstance(m.content, str) else "")
-            for m in state.get("messages", [])[-1:]
-        )
-        else "store",
+        lambda state: (
+            "agent"
+            if any(
+                isinstance(m, HumanMessage)
+                and "INSUFFICIENT" in (m.content if isinstance(m.content, str) else "")
+                for m in state.get("messages", [])[-1:]
+            )
+            else "store"
+        ),
         {"agent": "agent", "store": "store"},
     )
     g.add_edge("store", END)
