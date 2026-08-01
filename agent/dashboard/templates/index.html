@@ -124,14 +124,20 @@
 
       /* Goal rows */
       .goal {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-        padding: 0.6rem 0;
+        padding: 0.8rem 0;
         border-bottom: 1px solid #1e1e1e;
       }
       .goal:last-child {
         border-bottom: none;
+      }
+      .goal-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+      .goal-main {
+        flex: 1;
+        min-width: 0;
       }
       .badge {
         background: #1e2a5e;
@@ -144,14 +150,152 @@
         margin-top: 0.1rem;
       }
       .goal-title {
-        font-size: 0.9rem;
+        font-size: 0.92rem;
         color: #e0e0e0;
+        font-weight: 600;
       }
       .goal-desc {
         font-size: 0.78rem;
+        color: #888;
+        margin-top: 0.25rem;
+        line-height: 1.45;
+      }
+      .goal-rationale {
+        font-size: 0.75rem;
+        color: #6ee7b7;
+        margin-top: 0.3rem;
+        line-height: 1.45;
+        padding-left: 0.6rem;
+        border-left: 2px solid #1a3a2a;
+      }
+      .goal-rationale::before {
+        content: "why: ";
+        color: #4a8a6a;
+        font-weight: 600;
+      }
+      .goal-actions {
+        display: flex;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
+      }
+      .btn {
+        background: #1f1f1f;
+        border: 1px solid #2e2e2e;
+        color: #aaa;
+        font-size: 0.7rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .btn:hover {
+        background: #2a2a2a;
+        color: #fff;
+      }
+      .btn-danger {
+        color: #e57373;
+        border-color: #3a2222;
+      }
+      .btn-danger:hover {
+        background: #2a1515;
+        color: #ef9a9a;
+      }
+      .btn-primary {
+        background: #1e2a5e;
+        border-color: #2e3a7e;
+        color: #818cf8;
+      }
+      .btn-primary:hover {
+        background: #2a3a7e;
+        color: #a5b4fc;
+      }
+
+      /* Inline edit form */
+      .goal-edit {
+        margin-top: 0.6rem;
+        display: none;
+      }
+      .goal-edit.open {
+        display: block;
+      }
+      .goal-edit label {
+        display: block;
+        font-size: 0.68rem;
         color: #666;
-        margin-top: 0.2rem;
-        line-height: 1.4;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.5rem;
+        margin-bottom: 0.2rem;
+      }
+      .goal-edit input,
+      .goal-edit textarea {
+        width: 100%;
+        background: #0d0d0d;
+        border: 1px solid #2e2e2e;
+        color: #d4d4d4;
+        font-family: inherit;
+        font-size: 0.8rem;
+        padding: 0.35rem 0.5rem;
+        border-radius: 4px;
+        resize: vertical;
+      }
+      .goal-edit input:focus,
+      .goal-edit textarea:focus {
+        outline: none;
+        border-color: #4a4a4a;
+      }
+      .goal-edit .form-actions {
+        margin-top: 0.6rem;
+        display: flex;
+        gap: 0.4rem;
+      }
+
+      /* New goal form */
+      .new-goal {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #1e1e1e;
+      }
+      .new-goal-toggle {
+        text-align: center;
+      }
+      .new-goal form {
+        display: none;
+        margin-top: 0.75rem;
+      }
+      .new-goal form.open {
+        display: block;
+      }
+      .new-goal label {
+        display: block;
+        font-size: 0.68rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0.5rem;
+        margin-bottom: 0.2rem;
+      }
+      .new-goal input,
+      .new-goal textarea {
+        width: 100%;
+        background: #0d0d0d;
+        border: 1px solid #2e2e2e;
+        color: #d4d4d4;
+        font-family: inherit;
+        font-size: 0.8rem;
+        padding: 0.35rem 0.5rem;
+        border-radius: 4px;
+        resize: vertical;
+      }
+      .new-goal input:focus,
+      .new-goal textarea:focus {
+        outline: none;
+        border-color: #4a4a4a;
+      }
+      .new-goal .form-actions {
+        margin-top: 0.6rem;
+        display: flex;
+        gap: 0.4rem;
       }
 
       /* Log entries */
@@ -230,23 +374,108 @@
         </div>
         {% if goals %} {% for g in goals %}
         <div class="goal">
-          <span class="badge">P{{ g.priority }}</span>
-          <div>
-            <div class="goal-title">{{ g.title }}</div>
-            {% if g.description %}
-            <div class="goal-desc">
-              {{ g.description[:140] }}{% if g.description | length > 140 %}…{%
-              endif %}
+          <div class="goal-head">
+            <span class="badge">P{{ g.priority }}</span>
+            <div class="goal-main">
+              <div class="goal-title">{{ g.title }}</div>
+              {% if g.description %}
+              <div class="goal-desc">{{ g.description }}</div>
+              {% endif %} {% if g.rationale %}
+              <div class="goal-rationale">{{ g.rationale }}</div>
+              {% endif %}
             </div>
-            {% endif %}
+          </div>
+          <div class="goal-actions">
+            <button
+              class="btn"
+              onclick="document.getElementById('edit-{{ g.id }}').classList.toggle('open')"
+            >
+              ✎ edit
+            </button>
+            <form
+              method="post"
+              action="/goals/{{ g.id }}/deactivate"
+              style="display:inline"
+              onsubmit="return confirm('Deactivate this goal?')"
+            >
+              <button class="btn" type="submit">⊘ deactivate</button>
+            </form>
+            <form
+              method="post"
+              action="/goals/{{ g.id }}/delete"
+              style="display:inline"
+              onsubmit="return confirm('Permanently delete this goal?')"
+            >
+              <button class="btn btn-danger" type="submit">✕ delete</button>
+            </form>
+          </div>
+          <div id="edit-{{ g.id }}" class="goal-edit">
+            <form method="post" action="/goals/{{ g.id }}/edit">
+              <label>Title</label>
+              <input name="title" value="{{ g.title }}" required />
+              <label>Priority (1-9)</label>
+              <input
+                name="priority"
+                type="number"
+                min="1"
+                max="9"
+                value="{{ g.priority }}"
+              />
+              <label>Description</label>
+              <textarea name="description" rows="3">{{ g.description }}</textarea>
+              <label>Rationale (why pursue this / approach)</label>
+              <textarea name="rationale" rows="3">{{ g.rationale }}</textarea>
+              <div class="form-actions">
+                <button class="btn btn-primary" type="submit">Save</button>
+                <button
+                  class="btn"
+                  type="button"
+                  onclick="document.getElementById('edit-{{ g.id }}').classList.remove('open')"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
         {% endfor %} {% else %}
         <p class="empty">
-          No goals yet. Add goals to <code>data/goals.md</code> or email the
-          agent.
+          No goals yet. Create one below or email the agent with a new intent.
         </p>
         {% endif %}
+
+        <!-- New goal form -->
+        <div class="new-goal">
+          <div class="new-goal-toggle">
+            <button
+              class="btn btn-primary"
+              onclick="document.getElementById('new-goal-form').classList.toggle('open')"
+            >
+              + New Goal
+            </button>
+          </div>
+          <form id="new-goal-form" method="post" action="/goals/new">
+            <label>Title</label>
+            <input name="title" placeholder="Short goal title" required />
+            <label>Priority (1-9)</label>
+            <input name="priority" type="number" min="1" max="9" value="5" />
+            <label>Description</label>
+            <textarea
+              name="description"
+              rows="3"
+              placeholder="What to research or track"
+            ></textarea>
+            <label>Rationale (why pursue this / approach)</label>
+            <textarea
+              name="rationale"
+              rows="3"
+              placeholder="Why this matters and the approach it implies"
+            ></textarea>
+            <div class="form-actions">
+              <button class="btn btn-primary" type="submit">Create Goal</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <!-- Emails column -->

@@ -34,10 +34,9 @@ class Settings(BaseSettings):
     data_dir: str = _DEFAULT_DATA
     db_path: str = os.path.join(_DEFAULT_DATA, "sisyphus.db")
     chroma_path: str = os.path.join(_DEFAULT_DATA, "chroma")
-    goals_file: str = os.path.join(_DEFAULT_DATA, "goals.md")
 
     # Timing (canonical defaults — override via .env if needed)
-    research_interval_minutes: int = 120  # every 2 hours
+    research_interval_minutes: int = 6  # every hour
     inbox_check_interval_minutes: int = 15  # every 15 min
     daily_report_hour: int = 8  # 08:00 UTC
 

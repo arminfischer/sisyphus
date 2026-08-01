@@ -27,13 +27,7 @@ from agent.email_handler import (
     send_feedback_request,
 )
 from agent.goals import (
-    deactivate_goal,
     load_goals,
-    load_goals_from_file,
-    save_goal,
-    update_goal,
-    update_goals_from_feedback,
-    _sync_goals_file,
 )
 from agent.graph import run_research_cycle
 from agent.memory.db import ResearchLog, get_session, init_db
@@ -182,46 +176,6 @@ def _check_llm() -> None:
         log.warning(f"llama-server not reachable on startup: {exc}")
 
 
-def _seed_goals_from_file() -> None:
-    """Sync DB goals with goals.md on every startup.
-
-    - Goals in the file but not in the DB → added.
-    - Goals in the DB but not in the file → deactivated.
-    - Priority/description changes in the file → applied.
-    """
-    file_goals = load_goals_from_file()
-    file_titles = {g["title"] for g in file_goals}
-    db_goals = load_goals()
-    db_by_title = {g["title"]: g for g in db_goals}
-
-    # Deactivate goals removed from the file
-    for title, g in db_by_title.items():
-        if title not in file_titles:
-            deactivate_goal(g["id"])
-            log.info(f"Deactivated goal removed from goals.md: {title!r}")
-
-    # Add or update goals from the file
-    for g in file_goals:
-        if g["title"] in db_by_title:
-            existing = db_by_title[g["title"]]
-            if (
-                existing["priority"] != g.get("priority", 5)
-                or existing["description"] != g.get("description", "").strip()
-            ):
-                update_goal(
-                    existing["id"],
-                    priority=g.get("priority", 5),
-                    description=g.get("description", "").strip(),
-                )
-                log.info(f"Updated goal from goals.md: {g['title']!r}")
-        else:
-            save_goal(g["title"], g.get("description", ""), g.get("priority", 5))
-            log.info(f"Added goal from goals.md: {g['title']!r}")
-
-    # Single authoritative sync back to file after all DB changes are done
-    _sync_goals_file()
-
-
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
@@ -231,7 +185,6 @@ def main() -> None:
     log.info("=" * 60)
 
     init_db()
-    _seed_goals_from_file()
     _check_llm()
 
     # Start dashboard in background thread

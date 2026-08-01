@@ -17,7 +17,6 @@ RUN mkdir -p /data
 # Ensure Docker always uses /data regardless of Python default
 ENV DATA_DIR=/data \
     DB_PATH=/data/sisyphus.db \
-    CHROMA_PATH=/data/chroma \
-    GOALS_FILE=/data/goals.md
+    CHROMA_PATH=/data/chroma
 
 CMD ["python", "-m", "agent.main"]

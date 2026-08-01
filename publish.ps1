@@ -48,7 +48,7 @@ $robocopyArgs = @(
     ".gitignore",
     ".dockerignore",
     "/XD",          # Exclude directories:
-    "data",         #   persistent data (chroma vectors, db, goals.md)
+    "data",         #   persistent data (chroma vectors, db)
     "__pycache__",
     ".git",
     ".vscode",
@@ -74,7 +74,7 @@ if ($process.ExitCode -le 3) {
     Write-Host ""
     Write-Host "Preserved on remote (not overwritten):" -ForegroundColor Cyan
     Write-Host "  .env                 (secrets)"        -ForegroundColor Cyan
-    Write-Host "  data/                (chroma + sqlite + goals.md)" -ForegroundColor Cyan
+    Write-Host "  data/                (chroma + sqlite)" -ForegroundColor Cyan
     Write-Host "  *.db / *.db-*        (database files)" -ForegroundColor Cyan
     Write-Host ""
 

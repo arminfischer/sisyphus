@@ -8,6 +8,8 @@ from sqlalchemy import (
     String,
     Text,
     create_engine,
+    inspect,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -30,6 +32,7 @@ class Goal(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(256), nullable=False)
     description = Column(Text, default="")
+    rationale = Column(Text, default="")
     active = Column(Boolean, default=True)
     priority = Column(Integer, default=5)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -71,6 +74,18 @@ class Feedback(Base):
 
 def init_db() -> None:
     Base.metadata.create_all(engine)
+    _migrate_goal_rationale()
+
+
+def _migrate_goal_rationale() -> None:
+    """Add the `rationale` column to legacy databases if missing."""
+    inspector = inspect(engine)
+    if "goals" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("goals")}
+    if "rationale" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE goals ADD COLUMN rationale TEXT DEFAULT ''"))
 
 
 def get_session() -> Session:

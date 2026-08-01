@@ -58,7 +58,7 @@ sisyphus/
 ├── .env.example
 ├── publish.ps1              # deploy to Synology
 ├── data/
-│   └── goals.md             # seed goals — edit any time
+│   └── (sqlite db + chroma vectors — created at runtime)
 └── agent/
     ├── config.py            # all settings (pydantic-settings + .env)
     ├── goals.py             # goal CRUD + LLM-driven updates from feedback
@@ -98,7 +98,7 @@ Key variables:
 | `GMAIL_APP_PASSWORD` | Gmail App Password (see below) |
 | `NOTIFY_EMAIL` | Where to send reports and feedback requests |
 | `DASHBOARD_PORT` | Dashboard port (default: `7070`) |
-| `RESEARCH_INTERVAL_MINUTES` | How often a research cycle runs (default: `120`) |
+| `RESEARCH_INTERVAL_MINUTES` | How often a research cycle runs (default: `60`) |
 | `INBOX_CHECK_INTERVAL_MINUTES` | How often the inbox is polled (default: `15`) |
 | `DAILY_REPORT_HOUR` | UTC hour for the daily report email (default: `8`) |
 
@@ -130,7 +130,7 @@ pip install -r requirements.txt
 python -m agent.main
 ```
 
-Data is stored in `./data/` locally (SQLite, ChromaDB, `goals.md`) — no Docker needed.  
+Data is stored in `./data/` locally (SQLite, ChromaDB) — no Docker needed.  
 Dashboard: [http://localhost:7070](http://localhost:7070)
 
 ### Useful one-liners
@@ -168,7 +168,7 @@ docker compose up -d
 Dashboard: `http://nas-ip:7070`  
 Logs: `docker logs -f sisyphus`
 
-The `sisyphus_data` Docker volume persists all data (ChromaDB, SQLite, `goals.md`) across container restarts and rebuilds.
+The `sisyphus_data` Docker volume persists all data (ChromaDB, SQLite) across container restarts and rebuilds.
 
 ---
 
@@ -213,10 +213,13 @@ The live `data/` directory and `.env` on the NAS are **never overwritten** by th
 
 ```
 agent → (tool calls?) → tools → agent
-      → (RESEARCH_COMPLETE) → store → END
+      → (RESEARCH_COMPLETE) → critique → (insufficient?) → agent
+                                              (sufficient?) → store → END
 ```
 
 The agent plans, calls `web_search` / `read_pdf` as needed, then writes findings to ChromaDB (semantic memory) and SQLite (research log).
+
+A **self-critique** step runs before results are stored: an independent LLM call reviews the summary against the goal and its rationale. If the research is found insufficient (gaps, unverified claims, not addressing the rationale), the agent is sent back to do more work — up to 2 critique rounds. This prevents the agent from stopping early with shallow results.
 
 ### Memory
 
@@ -225,24 +228,19 @@ The agent plans, calls `web_search` / `read_pdf` as needed, then writes findings
 
 ### Goal management
 
-Goals are stored in both SQLite and `data/goals.md`.
+Goals are stored in SQLite and managed entirely through the dashboard UI or email.
+
+Each goal has:
+
+- **Title** — short label
+- **Description** — what to research or track
+- **Rationale** — *why* the agent should pursue this goal and the approach it implies; displayed prominently next to the goal so the agent's direction is transparent
+- **Priority** — 1–9 (higher = more important)
 
 To add or change goals:
 
-- **Email the agent** — reply to any of its emails with instructions; it will parse them with the LLM and update goals automatically
-- **Edit `data/goals.md` directly** — changes are seeded into the DB on next restart
-
-Format of `goals.md`:
-
-```markdown
-## [8] Monitor local AI developments
-Track new model releases and benchmarks for models that run on 16 GB RAM.
-
-## [5] General tech learning
-Stay up to date with Python, DevOps, and interesting open-source projects.
-```
-
-The number in brackets is the priority (1–10).
+- **Dashboard UI** — create, edit, deactivate, or delete goals directly at [http://localhost:7070](http://localhost:7070). Each goal shows its rationale inline; click *edit* to modify any field.
+- **Email the agent** — reply to any of its emails with instructions. The agent parses the intent with the LLM and will **create new goals** for new topics/intents, or update/deactivate existing goals as appropriate.
 
 ---
 

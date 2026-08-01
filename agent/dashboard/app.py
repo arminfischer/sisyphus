@@ -1,10 +1,16 @@
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from agent.goals import load_goals
+from agent.goals import (
+    deactivate_goal,
+    delete_goal,
+    load_goals,
+    save_goal,
+    update_goal,
+)
 from agent.memory.db import EmailLog, ResearchLog, get_session
 from agent.memory.vector import collection_count, search
 
@@ -55,6 +61,53 @@ async def dashboard(request: Request):
             "mem_count": collection_count(),
         },
     )
+
+
+# ── Goal CRUD (form-based, dashboard UI) ──────────────────────────────────────
+
+
+@app.post("/goals/new")
+async def create_goal(
+    title: str = Form(...),
+    description: str = Form(""),
+    rationale: str = Form(""),
+    priority: int = Form(5),
+):
+    save_goal(title, description, rationale, priority)
+    return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/goals/{goal_id}/edit")
+async def edit_goal(
+    goal_id: int,
+    title: str = Form(...),
+    description: str = Form(""),
+    rationale: str = Form(""),
+    priority: int = Form(5),
+):
+    update_goal(
+        goal_id,
+        title=title,
+        description=description,
+        rationale=rationale,
+        priority=priority,
+    )
+    return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/goals/{goal_id}/deactivate")
+async def deactivate_goal_route(goal_id: int):
+    deactivate_goal(goal_id)
+    return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/goals/{goal_id}/delete")
+async def delete_goal_route(goal_id: int):
+    delete_goal(goal_id)
+    return RedirectResponse(url="/", status_code=303)
+
+
+# ── JSON API ──────────────────────────────────────────────────────────────────
 
 
 @app.get("/goals")

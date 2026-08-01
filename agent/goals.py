@@ -2,9 +2,7 @@ import re
 import json
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 
-from agent.config import settings
 from agent.memory.db import get_session, Goal
 
 log = logging.getLogger("sisyphus.goals")
@@ -13,32 +11,60 @@ log = logging.getLogger("sisyphus.goals")
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
 
-def load_goals() -> list[dict]:
+def load_goals(include_inactive: bool = False) -> list[dict]:
     with get_session() as session:
-        goals = (
-            session.query(Goal)
-            .filter(Goal.active.is_(True))
-            .order_by(Goal.priority.desc())
-            .all()
-        )
+        q = session.query(Goal)
+        if not include_inactive:
+            q = q.filter(Goal.active.is_(True))
+        goals = q.order_by(Goal.priority.desc()).all()
         return [
             {
                 "id": g.id,
                 "title": g.title,
                 "description": g.description,
+                "rationale": g.rationale or "",
                 "priority": g.priority,
+                "active": g.active,
+                "created_at": g.created_at,
+                "updated_at": g.updated_at,
             }
             for g in goals
         ]
 
 
-def save_goal(title: str, description: str = "", priority: int = 5) -> int:
+def get_goal(goal_id: int) -> dict | None:
     with get_session() as session:
-        goal = Goal(title=title, description=description, priority=priority)
+        g = session.query(Goal).filter(Goal.id == goal_id).first()
+        if not g:
+            return None
+        return {
+            "id": g.id,
+            "title": g.title,
+            "description": g.description,
+            "rationale": g.rationale or "",
+            "priority": g.priority,
+            "active": g.active,
+        }
+
+
+def save_goal(
+    title: str,
+    description: str = "",
+    rationale: str = "",
+    priority: int = 5,
+) -> int:
+    with get_session() as session:
+        goal = Goal(
+            title=title,
+            description=description,
+            rationale=rationale,
+            priority=priority,
+        )
         session.add(goal)
         session.commit()
         session.refresh(goal)
         gid = goal.id
+    log.info(f"Goal created: {title!r} (id={gid})")
     return gid
 
 
@@ -50,57 +76,20 @@ def update_goal(goal_id: int, **kwargs) -> None:
                 setattr(goal, k, v)
             goal.updated_at = datetime.now(timezone.utc)
             session.commit()
+            log.info(f"Goal {goal_id} updated: {kwargs}")
 
 
 def deactivate_goal(goal_id: int) -> None:
     update_goal(goal_id, active=False)
 
 
-# ── goals.md sync ─────────────────────────────────────────────────────────────
-
-
-def _sync_goals_file() -> None:
-    goals = load_goals()
-    path = Path(settings.goals_file)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lines = [
-        "# Sisyphus Goals\n\n",
-        "*Auto-synced from the database. You may edit this file directly — "
-        "changes are picked up on next restart.*\n\n",
-    ]
-    for g in goals:
-        lines.append(f"## [{g['priority']}] {g['title']}\n")
-        if g["description"]:
-            lines.append(f"{g['description'].strip()}\n")
-        lines.append("\n")
-    path.write_text("".join(lines), encoding="utf-8")
-
-
-def load_goals_from_file() -> list[dict]:
-    """Parse goals.md → list of dicts. Used on startup to seed an empty DB."""
-    path = Path(settings.goals_file)
-    if not path.exists():
-        return []
-    goals: list[dict] = []
-    current: dict | None = None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.startswith("## "):
-            if current:
-                goals.append(current)
-            m = re.match(r"## \[(\d+)\] (.+)", line)
-            if m:
-                current = {
-                    "priority": int(m.group(1)),
-                    "title": m.group(2).strip(),
-                    "description": "",
-                }
-            else:
-                current = {"priority": 5, "title": line[3:].strip(), "description": ""}
-        elif current and line.strip() and not line.startswith("#"):
-            current["description"] += line.strip() + " "
-    if current:
-        goals.append(current)
-    return goals
+def delete_goal(goal_id: int) -> None:
+    with get_session() as session:
+        goal = session.query(Goal).filter(Goal.id == goal_id).first()
+        if goal:
+            session.delete(goal)
+            session.commit()
+            log.info(f"Goal {goal_id} deleted")
 
 
 # ── LLM-driven goal updates from feedback ─────────────────────────────────────
@@ -109,12 +98,20 @@ def load_goals_from_file() -> list[dict]:
 def update_goals_from_feedback(feedback_text: str, llm_invoke_fn) -> str:
     """
     Parse user feedback with the LLM and apply goal mutations.
+
+    Supports creating NEW goals, updating existing ones, and deactivating
+    goals. The LLM is explicitly instructed to create new goals whenever the
+    user expresses a new intent, direction, or topic — not only when updating
+    existing goals.
+
     Returns a human-readable summary of changes made.
     """
     goals = load_goals()
     goals_text = (
         "\n".join(
-            f"- [id={g['id']}, priority={g['priority']}] {g['title']}: {g['description']}"
+            f"- [id={g['id']}, priority={g['priority']}] {g['title']}\n"
+            f"    description: {g['description']}\n"
+            f"    rationale: {g['rationale']}"
             for g in goals
         )
         or "(none yet)"
@@ -122,6 +119,16 @@ def update_goals_from_feedback(feedback_text: str, llm_invoke_fn) -> str:
 
     prompt = f"""You are managing a research agent's goal list.
 Based on the user feedback below, decide what changes to make.
+
+CRITICAL: If the user introduces a NEW topic, intent, or direction that is not
+already covered by an existing goal, you MUST add it as a new goal. Do not
+force-fit new intent into existing goals. Only update an existing goal when the
+feedback is clearly about refining or changing that specific goal.
+
+Each goal must include a clear `rationale` explaining WHY the agent should
+pursue it and what approach it implies (e.g. "track X so we can decide Y",
+"monitor Z because it affects W"). The rationale makes the agent's approach
+transparent to the user.
 
 Current goals:
 {goals_text}
@@ -131,12 +138,29 @@ User feedback:
 
 Respond with ONLY a JSON object (no markdown, no prose):
 {{
-  "add": [{{"title": "...", "description": "...", "priority": 5}}],
-  "update": [{{"id": 1, "title": "...", "description": "...", "priority": 5}}],
+  "add": [
+    {{
+      "title": "short goal title",
+      "description": "what to research / track",
+      "rationale": "why this matters and the approach it implies",
+      "priority": 5
+    }}
+  ],
+  "update": [
+    {{
+      "id": 1,
+      "title": "...",
+      "description": "...",
+      "rationale": "...",
+      "priority": 5
+    }}
+  ],
   "deactivate": [1, 2],
   "summary": "One-sentence summary of what changed."
 }}
-Omit any key that has no changes."""
+Omit any key that has no changes. When updating, only include fields that
+should actually change (but always include `rationale` if you are refining
+the goal's purpose)."""
 
     response = llm_invoke_fn(prompt)
     try:
@@ -145,19 +169,26 @@ Omit any key that has no changes."""
         data = json.loads(cleaned)
 
         for g in data.get("add", []):
-            save_goal(g["title"], g.get("description", ""), g.get("priority", 5))
-            log.info(f"Goal added: {g['title']}")
+            save_goal(
+                g["title"],
+                g.get("description", ""),
+                g.get("rationale", ""),
+                g.get("priority", 5),
+            )
+            log.info(f"Goal added from feedback: {g['title']}")
 
         for g in data.get("update", []):
             gid = g.pop("id")
-            update_goal(gid, **g)
-            log.info(f"Goal {gid} updated")
+            # Only pass known fields
+            allowed = {"title", "description", "rationale", "priority", "active"}
+            clean = {k: v for k, v in g.items() if k in allowed}
+            update_goal(gid, **clean)
+            log.info(f"Goal {gid} updated from feedback")
 
         for gid in data.get("deactivate", []):
             deactivate_goal(gid)
-            log.info(f"Goal {gid} deactivated")
+            log.info(f"Goal {gid} deactivated from feedback")
 
-        _sync_goals_file()  # sync file after feedback-driven changes
         return data.get("summary", "Goals updated.")
     except Exception as e:
         log.warning(f"Could not parse goal update response: {e}")
