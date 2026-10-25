@@ -7,7 +7,4 @@ services:
     ports:
       - "${DASHBOARD_PORT:-7070}:7070"
     volumes:
-      - sisyphus_data:/data
-
-volumes:
-  sisyphus_data:
+      - ./data:/data

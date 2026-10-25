@@ -153,7 +153,7 @@ docker compose up -d
 Dashboard: `http://nas-ip:7070`  
 Logs: `docker logs -f sisyphus`
 
-The `sisyphus_data` Docker volume persists all data (ChromaDB, SQLite) across container restarts and rebuilds.
+The Compose bind mount persists SQLite and ChromaDB in `/volume1/docker/sisyphus/data` on the NAS, visible from Windows at `D:\sisyphus\data`. It is not copied from the local workspace during publishing, so NAS data stays separate and survives container rebuilds.
 
 ---
 
