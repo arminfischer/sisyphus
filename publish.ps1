@@ -1,7 +1,7 @@
 param(
     [string]$SourcePath = $PSScriptRoot,
     [string]$TargetPath = "D:\sisyphus",
-    [string]$RemoteHost = "armin@192.168.2.117",
+    [string]$RemoteHost = "armin@192.168.2.138",
     [string]$RemotePath = "/volume1/docker/sisyphus"
 )
 
@@ -18,7 +18,7 @@ if (-not (Test-Path $SourcePath)) {
     exit 1
 }
 
-# Create local staging directory if needed
+# Create deployment directory on the mapped NAS share if needed
 if (-not (Test-Path $TargetPath)) {
     Write-Host "Creating local staging directory..." -ForegroundColor Green
     try {
@@ -31,7 +31,7 @@ if (-not (Test-Path $TargetPath)) {
     }
 }
 
-Write-Host "Copying files to local staging..." -ForegroundColor Green
+Write-Host "Copying files directly to the NAS share..." -ForegroundColor Green
 Write-Host ""
 
 $robocopyArgs = @(
@@ -69,7 +69,7 @@ $process = Start-Process -FilePath "robocopy.exe" -ArgumentList $robocopyArgs -N
 if ($process.ExitCode -le 3) {
     Write-Host ""
     Write-Host "==============================" -ForegroundColor Green
-    Write-Host "Local staging OK  (exit $($process.ExitCode))" -ForegroundColor Green
+    Write-Host "NAS share copy OK  (exit $($process.ExitCode))" -ForegroundColor Green
     Write-Host "==============================" -ForegroundColor Green
     Write-Host ""
     Write-Host "Preserved on remote (not overwritten):" -ForegroundColor Cyan
@@ -85,42 +85,19 @@ if ($process.ExitCode -le 3) {
     }
 
     Write-Host ""
-    Write-Host "--- Syncing files to $RemoteHost`:$RemotePath ---" -ForegroundColor Green
-
-    # rsync the staged folder to Synology
-    # --exclude=data keeps the live data directory untouched on the NAS
-    $rsyncArgs = @(
-        "-avz",
-        "--delete",
-        "--exclude=data/",
-        "--exclude=.env",
-        "--exclude=*.db",
-        "--exclude=*.db-shm",
-        "--exclude=*.db-wal",
-        "$TargetPath/",
-        "$RemoteHost`:$RemotePath/"
-    )
-
-    Write-Host "rsync $($rsyncArgs -join ' ')" -ForegroundColor Gray
-    $rsyncProcess = Start-Process -FilePath "rsync" -ArgumentList $rsyncArgs -NoNewWindow -Wait -PassThru
-
-    if ($rsyncProcess.ExitCode -ne 0) {
-        Write-Host "ERROR: rsync failed (exit $($rsyncProcess.ExitCode))." -ForegroundColor Red
-        Write-Host "Tip: ensure rsync is available (e.g. via Git for Windows or WSL) and SSH keys are set up." -ForegroundColor Yellow
-        exit 1
-    }
-
     Write-Host ""
     Write-Host "--- Remote docker compose restart ---" -ForegroundColor Green
 
-    $sshCommand = "cd $RemotePath && sudo -n /usr/local/bin/docker compose down && sudo -n /usr/local/bin/docker compose build sisyphus --no-cache && sudo -n /usr/local/bin/docker compose up -d"
+    $sshCommand = "cd $RemotePath && sudo /usr/local/bin/docker compose down && sudo /usr/local/bin/docker compose build sisyphus --no-cache && sudo /usr/local/bin/docker compose up -d"
 
-    Write-Host "SSH: $sshCommand" -ForegroundColor Gray
+    Write-Host "SSH: ssh.exe -tt $RemoteHost $sshCommand" -ForegroundColor Gray
+    Write-Host "Enter the SSH or sudo password in this terminal if prompted." -ForegroundColor Yellow
 
     try {
-        $sshProcess = Start-Process -FilePath "ssh.exe" -ArgumentList @($RemoteHost, $sshCommand) -NoNewWindow -Wait -PassThru
+        & ssh.exe -tt $RemoteHost $sshCommand
+        $sshExitCode = $LASTEXITCODE
 
-        if ($sshProcess.ExitCode -eq 0) {
+        if ($sshExitCode -eq 0) {
             Write-Host ""
             Write-Host "==============================" -ForegroundColor Green
             Write-Host "Deployment complete!" -ForegroundColor Green
@@ -130,7 +107,7 @@ if ($process.ExitCode -le 3) {
             Write-Host "Logs:      ssh $RemoteHost 'docker logs -f sisyphus'" -ForegroundColor Cyan
         }
         else {
-            Write-Host "ERROR: SSH command failed (exit $($sshProcess.ExitCode))." -ForegroundColor Red
+            Write-Host "ERROR: SSH command failed (exit $sshExitCode)." -ForegroundColor Red
             exit 1
         }
     }

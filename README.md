@@ -83,7 +83,7 @@ Key variables:
 | `GMAIL_APP_PASSWORD` | Gmail App Password (see below) |
 | `NOTIFY_EMAIL` | Where to send reports and feedback requests |
 | `DASHBOARD_PORT` | Dashboard port (default: `7070`) |
-| `RESEARCH_INTERVAL_MINUTES` | How often scheduled research runs (default: `120`) |
+| `RESEARCH_INTERVAL_MINUTES` | How often scheduled research runs (default: `1440`, once daily) |
 | `INBOX_CHECK_INTERVAL_MINUTES` | How often the inbox is polled (default: `15`) |
 | `DAILY_REPORT_HOUR` | UTC hour for the daily report email (default: `8`) |
 
@@ -167,18 +167,18 @@ Use `publish.ps1` to sync code and restart the container on the NAS:
 
 What it does:
 
-1. `robocopy` — stages changed files to `D:\sisyphus` (skips `.env`, `data/`, `*.db`)
-2. `rsync` — syncs the staged files to the Synology over SSH
-3. SSH — runs `docker compose down && build --no-cache && up -d`
+1. `robocopy` — copies changed files directly to the mapped NAS share at `D:\sisyphus` (skips `.env`, `data/`, `*.db`)
+2. SSH — runs `docker compose down && build --no-cache && up -d` in `/volume1/docker/sisyphus`
 
 **One-time SSH prereqs:**
 
 ```powershell
-# Set up key-based SSH auth (no password prompt during deploy)
+# Optional: avoid the SSH login prompt; sudo may still request a password
 ssh-copy-id armin@192.168.2.117
 ```
 
-`rsync` must be available locally — it ships with Git for Windows (`C:\Program Files\Git\usr\bin\rsync.exe`) or WSL.
+Windows OpenSSH (`ssh.exe`) must be available. The `D:` drive must be mapped to the Synology `docker` share; no local `rsync`, `scp`, or `tar` installation is required.
+The remote command uses `ssh -tt` so `sudo` can prompt in the terminal when needed.
 
 The live `data/` directory and `.env` on the NAS are **never overwritten** by the publish script.
 
@@ -191,7 +191,7 @@ The live `data/` directory and `.env` on the NAS are **never overwritten** by th
 | Job | Frequency | Action |
 | --- | --- | --- |
 | `check_inbox` | Every 15 min | Polls Gmail IMAP for replies; passes content to LLM → updates goals |
-| `run_research` | Every 2 hours by default | Runs active goals, starting with never-researched or oldest-researched objectives |
+| `run_research` | Once daily by default | Runs active goals, starting with never-researched or oldest-researched objectives |
 | `send_report` | Daily at 08:00 UTC | Compiles and emails a summary of recent research |
 
 ### Research cycle (LangGraph)

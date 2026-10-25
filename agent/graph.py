@@ -105,6 +105,10 @@ INSTRUCTIONS:
   unverified claims, do more research before finishing.
 - If you are unsure about something important and need the user's input,
   include exactly one line: FEEDBACK_NEEDED: <your specific question>
+- If required information cannot be retrieved after trying the tools (for
+    example, access is denied, a request times out, or account context is missing),
+    ask for the specific access or detail needed with that same marker. Do not
+    finish with a generic inability statement instead of requesting feedback.
 - When you are genuinely done, end your final message with the exact token: RESEARCH_COMPLETE
 - Do NOT include RESEARCH_COMPLETE until you are done with all tool calls."""
 
@@ -159,6 +163,10 @@ def _collect_summary(state: AgentState) -> str:
     return "\n\n".join(parts).strip()
 
 
+def _has_feedback_needed(text: str) -> bool:
+    return bool(re.search(r"(?m)^\s*FEEDBACK_NEEDED:\s*\S", text))
+
+
 def _build_evidence_context(messages: list) -> str:
     excerpts = []
     for message in messages:
@@ -196,6 +204,8 @@ The research-turn budget has been reached. Synthesize only the evidence below;
 do not claim that the long-term objective is complete or invent missing facts.
 Include the most important findings, why they matter to the rationale, direct
 source URLs, and specific unresolved questions for the next scheduled pass.
+If essential information is blocked or missing and requires the user's help,
+include exactly one line: FEEDBACK_NEEDED: <specific question or action needed>.
 End with the exact token RESEARCH_COMPLETE.
 
 Objective: {goal['title']}
@@ -382,6 +392,11 @@ def store_node(state: AgentState) -> dict:
 
 def should_continue(state: AgentState) -> str:
     last = state["messages"][-1]
+    content = last.content if isinstance(last.content, str) else ""
+
+    if isinstance(last, AIMessage) and _has_feedback_needed(content):
+        log.info(f"[{state['goal']['title']}] Agent requested user feedback.")
+        return "store"
 
     # LLM wants to call tools
     if isinstance(last, AIMessage) and last.tool_calls:
@@ -392,7 +407,6 @@ def should_continue(state: AgentState) -> str:
         return "finalize"
 
     # LLM says it is done → send to critique first
-    content = last.content if isinstance(last.content, str) else ""
     if "RESEARCH_COMPLETE" in content:
         return "critique"
 
@@ -424,7 +438,13 @@ def build_graph():
         },
     )
     g.add_edge("tools", "agent")
-    g.add_edge("finalize", "critique")
+    g.add_conditional_edges(
+        "finalize",
+        lambda state: (
+            "store" if _has_feedback_needed(_collect_summary(state)) else "critique"
+        ),
+        {"store": "store", "critique": "critique"},
+    )
 
     # After critique: if the agent was sent back to do more work, the critique
     # node injects a HumanMessage and we route back to "agent". If the critique
@@ -457,8 +477,6 @@ def run_research_cycle(goal: dict) -> tuple[str, bool]:
     Returns:
         (summary: str, needs_feedback: bool)
     """
-    import re
-
     graph_app = build_graph()
     initial_msg = HumanMessage(
         content=f"Research goal: {goal['title']}\n{goal.get('description', '')}"
@@ -477,5 +495,5 @@ def run_research_cycle(goal: dict) -> tuple[str, bool]:
     summary = last.content if isinstance(last.content, str) else str(last.content)
     summary = summary.replace("RESEARCH_COMPLETE", "").strip()
 
-    needs_feedback = bool(re.search(r"FEEDBACK_NEEDED:", summary))
+    needs_feedback = _has_feedback_needed(summary)
     return summary, needs_feedback

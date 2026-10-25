@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     chroma_path: str = os.path.join(_DEFAULT_DATA, "chroma")
 
     # Timing (canonical defaults — override via .env if needed)
-    research_interval_minutes: int = 120
+    research_interval_minutes: int = 1440
     inbox_check_interval_minutes: int = 15  # every 15 min
     daily_report_hour: int = 8  # 08:00 UTC
 
