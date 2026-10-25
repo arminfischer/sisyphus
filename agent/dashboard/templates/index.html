@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
     <title>Sisyphus</title>
     <style>
       *,
@@ -332,6 +333,174 @@
         font-size: 0.82rem;
         padding: 0.5rem 0;
       }
+
+      :root {
+        color-scheme: light;
+        --page: #eef2ed;
+        --surface: #ffffff;
+        --line: #d6e0d8;
+        --ink: #202c24;
+        --muted: #66736a;
+        --accent: #1a7157;
+        --accent-soft: #e2f0e8;
+        --rust: #b45e47;
+      }
+      body {
+        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+        background-color: var(--page);
+        background-image:
+          linear-gradient(rgba(32, 44, 36, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(32, 44, 36, 0.035) 1px, transparent 1px);
+        background-size: 28px 28px;
+        color: var(--ink);
+        padding: clamp(1rem, 3vw, 2.5rem);
+      }
+      header h1 {
+        color: var(--ink);
+        font-family: Georgia, "Times New Roman", serif;
+        letter-spacing: 0;
+      }
+      header h1 span {
+        color: var(--accent);
+      }
+      .nav,
+      .nav a {
+        color: var(--muted);
+      }
+      .nav a:hover,
+      .card-title a:hover {
+        color: var(--accent);
+      }
+      .stat {
+        background: rgba(255, 255, 255, 0.88);
+        border-color: var(--line);
+        border-radius: 6px;
+        text-align: left;
+      }
+      .stat-val,
+      .goal-title {
+        color: var(--ink);
+      }
+      .stat-label,
+      .card-title {
+        color: var(--muted);
+        letter-spacing: 0;
+      }
+      .grid {
+        gap: 1.5rem;
+      }
+      .card {
+        background: transparent;
+        border: 0;
+        border-top: 2px solid var(--line);
+        border-radius: 0;
+        padding: 1rem 0;
+      }
+      .card-title a,
+      .entry-link {
+        color: var(--accent);
+      }
+      .goal {
+        border-color: var(--line);
+      }
+      .badge,
+      .btn-primary {
+        background: var(--accent-soft);
+        border-color: #bfd8c8;
+        color: var(--accent);
+      }
+      .goal-desc,
+      .entry-meta {
+        color: var(--muted);
+      }
+      .goal-rationale {
+        border-color: var(--accent);
+        color: #365c49;
+      }
+      .goal-rationale::before {
+        color: var(--accent);
+      }
+      .goal-progress {
+        margin-top: 0.45rem;
+        color: var(--muted);
+        font-size: 0.72rem;
+      }
+      .btn,
+      .goal-edit input,
+      .goal-edit textarea,
+      .new-goal input,
+      .new-goal textarea {
+        background: var(--surface);
+        border-color: var(--line);
+        color: var(--ink);
+      }
+      .btn:hover {
+        background: var(--accent-soft);
+        color: var(--ink);
+      }
+      .btn-danger {
+        color: var(--rust);
+        border-color: #e7c9bd;
+      }
+      .btn-danger:hover {
+        background: #f8e9e3;
+        color: #873f30;
+      }
+      .btn-primary:hover {
+        background: #d5e9dc;
+        color: #15543f;
+      }
+      .goal-edit input:focus,
+      .goal-edit textarea:focus,
+      .new-goal input:focus,
+      .new-goal textarea:focus {
+        border-color: var(--accent);
+      }
+      .new-goal,
+      .entry {
+        border-color: var(--line);
+      }
+      .entry-meta .tag {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .entry-text {
+        color: #3f4b43;
+      }
+      .empty {
+        color: var(--muted);
+      }
+      .paused-goals {
+        border-top: 1px solid var(--line);
+        margin-top: 1rem;
+        padding-top: 0.8rem;
+      }
+      .paused-goals summary {
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 0.78rem;
+      }
+      .paused-badge {
+        background: #f7e9e2;
+        border-color: #e7c9bd;
+        color: var(--rust);
+      }
+      @media (max-width: 560px) {
+        .stats {
+          gap: 0.5rem;
+        }
+        .stat {
+          flex: 1 1 calc(50% - 0.5rem);
+          min-width: 0;
+          padding: 0.65rem 0.75rem;
+        }
+        .stat-val {
+          font-size: 1.35rem;
+        }
+        .goal-actions {
+          flex-wrap: wrap;
+        }
+      }
     </style>
   </head>
   <body>
@@ -363,6 +532,10 @@
         <div class="stat-val">{{ emails | length }}</div>
         <div class="stat-label">Emails Sent</div>
       </div>
+      <div class="stat">
+        <div class="stat-val">{{ research_interval_minutes }}m</div>
+        <div class="stat-label">Research Cadence</div>
+      </div>
     </div>
 
     <div class="grid">
@@ -373,7 +546,7 @@
           <a href="/goals">JSON</a>
         </div>
         {% if goals %} {% for g in goals %}
-        <div class="goal">
+        <div class="goal" id="goal-{{ g.id }}">
           <div class="goal-head">
             <span class="badge">P{{ g.priority }}</span>
             <div class="goal-main">
@@ -383,6 +556,11 @@
               {% endif %} {% if g.rationale %}
               <div class="goal-rationale">{{ g.rationale }}</div>
               {% endif %}
+              <div class="goal-progress">
+                {{ g.research_count }} research cycles · {% if g.last_researched
+                %} last worked {{ g.last_researched.strftime('%Y-%m-%d %H:%M')
+                }} UTC {% else %}not researched yet{% endif %}
+              </div>
             </div>
           </div>
           <div class="goal-actions">
@@ -482,6 +660,39 @@
             </div>
           </form>
         </div>
+        {% if paused_goals %}
+        <details class="paused-goals">
+          <summary>Paused objectives ({{ paused_goals | length }})</summary>
+          {% for g in paused_goals %}
+          <div class="goal">
+            <div class="goal-head">
+              <span class="badge paused-badge">Paused</span>
+              <div class="goal-main">
+                <div class="goal-title">{{ g.title }}</div>
+                <div class="goal-progress">
+                  {{ g.research_count }} research cycles · {% if
+                  g.last_researched %} last worked {{
+                  g.last_researched.strftime('%Y-%m-%d %H:%M') }} UTC {% else
+                  %}not researched yet{% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="goal-actions">
+              <form method="post" action="/goals/{{ g.id }}/activate">
+                <button class="btn btn-primary" type="submit">Resume</button>
+              </form>
+              <form
+                method="post"
+                action="/goals/{{ g.id }}/delete"
+                onsubmit="return confirm('Permanently delete this goal?');"
+              >
+                <button class="btn btn-danger" type="submit">Delete</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </details>
+        {% endif %}
       </div>
 
       <!-- Emails column -->
@@ -508,16 +719,15 @@
         {% if research %} {% for r in research %}
         <div class="entry">
           <div class="entry-meta">
-            <a
-              href="/research/{{ r.id }}"
-              style="color: #818cf8; text-decoration: none"
+            <a href="/research/{{ r.id }}" class="entry-link"
               >{{ r.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</a
             >
-            {% if r.goal_id %}<span class="tag">goal #{{ r.goal_id }}</span>{%
+            {% if r.goal_id %}<span class="tag">{{ r.goal_title }}</span>{%
             endif %}
             <a
               href="/research/{{ r.id }}"
-              style="color: #555; font-size: 0.68rem; margin-left: 0.4rem"
+              class="entry-link"
+              style="font-size: 0.68rem; margin-left: 0.4rem"
               >view full →</a
             >
           </div>

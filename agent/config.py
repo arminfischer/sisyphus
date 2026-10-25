@@ -13,14 +13,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # LLM — llama-server (OpenAI-compatible API)
-    # Start locally with:
-    #   llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --port 8080
-    llm_base_url: str = "http://localhost:8080/v1"
-    llm_model: str = "gemma-4-E2B-it"
-    llm_api_key: str = (
-        "not-needed"  # llama-server ignores this, but the client requires a value
-    )
+    # LLM — OpenRouter's OpenAI-compatible API
+    llm_base_url: str = "https://openrouter.ai/api/v1"
+    llm_model: str = "openai/gpt-oss-20b"
+    llm_api_key: str = ""
 
     # Email
     gmail_user: str = ""
@@ -36,7 +32,7 @@ class Settings(BaseSettings):
     chroma_path: str = os.path.join(_DEFAULT_DATA, "chroma")
 
     # Timing (canonical defaults — override via .env if needed)
-    research_interval_minutes: int = 6  # every hour
+    research_interval_minutes: int = 120
     inbox_check_interval_minutes: int = 15  # every 15 min
     daily_report_hour: int = 8  # 08:00 UTC
 

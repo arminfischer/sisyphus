@@ -19,6 +19,7 @@ import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+from sqlalchemy import func
 
 from agent.config import settings
 from agent.email_handler import (
@@ -72,6 +73,8 @@ def run_research() -> None:
         log.info("No active goals — nothing to research.")
         return
 
+    goals = _prioritize_goals_by_research_age(goals)
+
     for goal in goals:
         log.info(f"Starting research cycle: {goal['title']!r}")
         try:
@@ -88,6 +91,32 @@ def run_research() -> None:
                 log.info(f"Feedback request sent for: {goal['title']!r}")
         except Exception as exc:
             log.exception(f"Research cycle failed for {goal['title']!r}: {exc}")
+
+
+def _prioritize_goals_by_research_age(goals: list[dict]) -> list[dict]:
+    """Start scheduled work with objectives that have waited the longest."""
+    goal_ids = [goal["id"] for goal in goals]
+    if not goal_ids:
+        return []
+
+    with get_session() as session:
+        latest_rows = (
+            session.query(ResearchLog.goal_id, func.max(ResearchLog.created_at))
+            .filter(ResearchLog.goal_id.in_(goal_ids))
+            .group_by(ResearchLog.goal_id)
+            .all()
+        )
+    last_researched = dict(latest_rows)
+
+    def sort_key(goal: dict) -> tuple[int, float, int]:
+        latest = last_researched.get(goal["id"])
+        if latest is None:
+            return (0, 0, -goal["priority"])
+        if latest.tzinfo is None:
+            latest = latest.replace(tzinfo=timezone.utc)
+        return (1, latest.timestamp(), -goal["priority"])
+
+    return sorted(goals, key=sort_key)
 
 
 def _compile_daily_report() -> str:
@@ -160,6 +189,10 @@ def _start_dashboard() -> None:
 
 
 def _check_llm() -> None:
+    if not settings.llm_api_key:
+        log.warning("LLM_API_KEY is not set; add your OpenRouter key to .env.")
+        return
+
     try:
         from langchain_openai import ChatOpenAI
 
@@ -171,10 +204,10 @@ def _check_llm() -> None:
         )
         llm.invoke("Say: OK")
         log.info(
-            f"llama-server ✓  ({settings.llm_base_url}, model={settings.llm_model})"
+            f"LLM provider ✓  ({settings.llm_base_url}, model={settings.llm_model})"
         )
     except Exception as exc:
-        log.warning(f"llama-server not reachable on startup: {exc}")
+        log.warning(f"LLM provider not reachable on startup: {exc}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -207,6 +240,8 @@ def main() -> None:
         IntervalTrigger(minutes=settings.research_interval_minutes),
         id="research",
         next_run_time=datetime.now(timezone.utc),  # run immediately on start
+        coalesce=True,
+        max_instances=1,
     )
     scheduler.add_job(
         send_report,
@@ -216,7 +251,7 @@ def main() -> None:
 
     log.info(
         f"Scheduler ready — "
-        f"research every {settings.research_interval_minutes}m, "
+        f"research every {settings.research_interval_minutes}m (oldest objectives first), "
         f"inbox every {settings.inbox_check_interval_minutes}m, "
         f"daily report at {settings.daily_report_hour:02d}:00 UTC"
     )

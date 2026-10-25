@@ -8,9 +8,6 @@ services:
       - "${DASHBOARD_PORT:-7070}:7070"
     volumes:
       - sisyphus_data:/data
-    extra_hosts:
-      # Allows container to reach the host laptop by hostname "host.docker.internal"
-      - "host.docker.internal:host-gateway"
 
 volumes:
   sisyphus_data:

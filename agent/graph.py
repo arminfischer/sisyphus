@@ -9,11 +9,12 @@ Graph topology:
 
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, TypedDict
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
@@ -29,7 +30,7 @@ from agent.tools.web_search import web_search
 log = logging.getLogger("sisyphus.graph")
 
 TOOLS = [web_search, read_pdf]
-MAX_ITERATIONS = 8  # guard against infinite loops
+MAX_ITERATIONS = 12
 
 
 # ── State ──────────────────────────────────────────────────────────────────────
@@ -64,7 +65,8 @@ def _build_system_prompt(goal: dict) -> str:
     )
 
     return f"""You are Sisyphus, a persistent autonomous research agent.
-Your purpose is to investigate your assigned goal thoroughly and produce a useful research summary.
+You are Sisyphus, a persistent research agent.
+Your purpose is to investigate the assigned objective thoroughly and make useful progress on it during each scheduled pass.
 
 TODAY'S DATE: {datetime.now(timezone.utc).strftime("%Y-%m-%d")} (UTC)
 Always search for the most recent information.
@@ -83,6 +85,10 @@ Rationale: {goal.get('rationale', '(no rationale given)')}
 INSTRUCTIONS:
 - Use web_search and read_pdf tools as needed.
 - Prefer multiple focused searches over one broad one.
+- Treat past research as a baseline: check for new developments and revisit
+    unresolved questions instead of repeating old findings.
+- Cross-check important claims with independent sources and include direct
+    source URLs in the summary.
 - After researching, write a clear, structured summary of your findings.
 - Be rigorous and self-critical: do NOT stop early. Before signalling
   completion, ask yourself whether your findings actually answer the goal
@@ -144,6 +150,60 @@ def _collect_summary(state: AgentState) -> str:
     return "\n\n".join(parts).strip()
 
 
+def _build_evidence_context(messages: list) -> str:
+    excerpts = []
+    for message in messages:
+        if isinstance(message, AIMessage):
+            if message.tool_calls:
+                continue
+            role = "Researcher"
+        elif isinstance(message, ToolMessage):
+            role = f"Tool output ({message.name or 'tool'})"
+        elif isinstance(message, HumanMessage):
+            role = "Research guidance"
+        else:
+            continue
+
+        text = str(message.content).strip()
+        if text:
+            excerpts.append(f"{role}: {text[:2200]}")
+
+    return "\n\n".join(excerpts[-18:]) or "(no research content was produced)"
+
+
+def finalize_node(state: AgentState) -> dict:
+    """Synthesize collected evidence when the research-turn budget is reached."""
+    goal = state["goal"]
+    llm = ChatOpenAI(
+        base_url=settings.llm_base_url,
+        model=settings.llm_model,
+        api_key=settings.llm_api_key,
+        temperature=0.2,
+        max_tokens=2048,
+    )
+    response = llm.invoke(
+        f"""You are finalizing one scheduled research pass for a continuing objective.
+The research-turn budget has been reached. Synthesize only the evidence below;
+do not claim that the long-term objective is complete or invent missing facts.
+Include the most important findings, why they matter to the rationale, direct
+source URLs, and specific unresolved questions for the next scheduled pass.
+End with the exact token RESEARCH_COMPLETE.
+
+Objective: {goal['title']}
+Description: {goal.get('description', '')}
+Rationale: {goal.get('rationale', '')}
+
+Collected research:
+{_build_evidence_context(state['messages'])}"""
+    )
+    content = (
+        response.content if isinstance(response.content, str) else str(response.content)
+    )
+    if "RESEARCH_COMPLETE" not in content:
+        content = f"{content.rstrip()}\n\nRESEARCH_COMPLETE"
+    return {"messages": [AIMessage(content=content)]}
+
+
 def critique_node(state: AgentState) -> dict:
     """
     Self-critique step: an independent LLM call reviews the agent's research
@@ -192,6 +252,7 @@ Evaluate critically:
 2. Are claims backed by sources or are there unverified assertions?
 3. Are there obvious gaps, missing angles, or unanswered sub-questions?
 4. Is the depth appropriate, or is it superficial / hand-wavy?
+5. Does it distinguish new findings from the existing research baseline?
 
 Respond with ONLY a JSON object (no markdown, no prose):
 {{
@@ -214,10 +275,33 @@ goal and rationale with adequate depth and sourcing."""
     try:
         data = _json.loads(cleaned)
     except Exception:
-        log.warning(f"[{goal['title']}] Could not parse critique response; accepting.")
-        return {"critique_rounds": critique_rounds + 1}
+        log.warning(
+            f"[{goal['title']}] Could not parse critique response; requesting more work."
+        )
+        return {
+            "messages": [
+                HumanMessage(
+                    content=(
+                        "The independent review could not be validated, so the research is "
+                        "INSUFFICIENT for now. Recheck the source support, address any "
+                        "obvious gaps, and produce a revised summary ending with "
+                        "RESEARCH_COMPLETE."
+                    )
+                )
+            ],
+            "critique_rounds": critique_rounds + 1,
+            "iteration": 0,
+        }
 
-    verdict = data.get("verdict", "sufficient").lower()
+    if not isinstance(data, dict):
+        data = {}
+    verdict = str(data.get("verdict", "")).strip().lower()
+    if verdict not in {"sufficient", "insufficient"}:
+        log.warning(
+            f"[{goal['title']}] Critique verdict missing or invalid; treating as insufficient."
+        )
+        verdict = "insufficient"
+
     if verdict == "insufficient":
         gaps = data.get("gaps", [])
         guidance = data.get("guidance", "Do more research to address the gaps.")
@@ -239,6 +323,7 @@ goal and rationale with adequate depth and sourcing."""
         return {
             "messages": [critique_msg],
             "critique_rounds": critique_rounds + 1,
+            "iteration": 0,
         }
 
     log.info(f"[{goal['title']}] Critique: SUFFICIENT (round {critique_rounds + 1}).")
@@ -248,6 +333,11 @@ goal and rationale with adequate depth and sourcing."""
 def store_node(state: AgentState) -> dict:
     summary = _collect_summary(state)
     goal = state["goal"]
+    sources = list(
+        dict.fromkeys(
+            url.rstrip(".,;:") for url in re.findall(r"https?://[^\s<>()\]]+", summary)
+        )
+    )
 
     doc_id = str(uuid.uuid4())
     add_document(
@@ -263,7 +353,7 @@ def store_node(state: AgentState) -> dict:
         log_entry = ResearchLog(
             goal_id=goal.get("id"),
             summary=summary,
-            sources=json.dumps([]),
+            sources=json.dumps(sources),
         )
         session.add(log_entry)
         session.commit()
@@ -284,14 +374,13 @@ def store_node(state: AgentState) -> dict:
 def should_continue(state: AgentState) -> str:
     last = state["messages"][-1]
 
-    # Hit iteration limit → force store
-    if state["iteration"] >= MAX_ITERATIONS:
-        log.warning(f"Max iterations reached for goal: {state['goal']['title']}")
-        return "store"
-
     # LLM wants to call tools
     if isinstance(last, AIMessage) and last.tool_calls:
         return "tools"
+
+    if state["iteration"] >= MAX_ITERATIONS:
+        log.warning(f"Research-turn budget reached for goal: {state['goal']['title']}")
+        return "finalize"
 
     # LLM says it is done → send to critique first
     content = last.content if isinstance(last.content, str) else ""
@@ -309,6 +398,7 @@ def build_graph():
     g = StateGraph(AgentState)
     g.add_node("agent", agent_node)
     g.add_node("tools", ToolNode(TOOLS))
+    g.add_node("finalize", finalize_node)
     g.add_node("critique", critique_node)
     g.add_node("store", store_node)
 
@@ -316,9 +406,16 @@ def build_graph():
     g.add_conditional_edges(
         "agent",
         should_continue,
-        {"tools": "tools", "agent": "agent", "critique": "critique", "store": "store"},
+        {
+            "tools": "tools",
+            "agent": "agent",
+            "critique": "critique",
+            "finalize": "finalize",
+            "store": "store",
+        },
     )
     g.add_edge("tools", "agent")
+    g.add_edge("finalize", "critique")
 
     # After critique: if the agent was sent back to do more work, the critique
     # node injects a HumanMessage and we route back to "agent". If the critique
@@ -363,7 +460,8 @@ def run_research_cycle(goal: dict) -> tuple[str, bool]:
             "goal": goal,
             "iteration": 0,
             "critique_rounds": 0,
-        }
+        },
+        config={"recursion_limit": MAX_ITERATIONS * (CRITIQUE_MAX_ROUNDS + 1) * 2 + 12},
     )
 
     last = result["messages"][-1]

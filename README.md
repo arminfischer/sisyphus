@@ -1,19 +1,19 @@
 # Sisyphus
 
-A permanent, autonomous local research agent. Runs 24/7 in Docker on a Synology NAS, uses a locally-hosted LLM, builds a growing memory database over time, and communicates via email.
+A persistent research agent. Runs on a schedule in Docker, uses OpenRouter's GPT-OSS 20B model, builds a growing memory database, and communicates via email.
 
 ---
 
 ## Architecture
 
 ```
-[Local machine — llama-server (gemma-4-E2B-it, port 8080)]
-        ↕
-[Synology NAS — Docker]
+[OpenRouter — openai/gpt-oss-20b]
+    ↕ HTTPS API
+[Research host — Docker]
   ├── sisyphus agent  (LangGraph research loop)
   ├── ChromaDB        (semantic vector memory, embedded)
   ├── SQLite          (goals, research log, email history)
-  └── FastAPI         (read-only dashboard, port 7070)
+    └── FastAPI         (objective and research dashboard, port 7070)
         ↕
 [Gmail SMTP/IMAP → your inbox]
 ```
@@ -22,29 +22,13 @@ A permanent, autonomous local research agent. Runs 24/7 in Docker on a Synology 
 
 ## LLM Stack
 
-The agent talks to **llama-server** (from llama.cpp), which exposes an OpenAI-compatible API on the local machine.
+The agent uses OpenRouter's OpenAI-compatible API with the `openai/gpt-oss-20b` model.
 
 | Role | Model |
 |---|---|
-| Primary reasoning + tool use | `gemma-4-E2B-it` (GGUF) |
+| Primary reasoning + tool use | `openai/gpt-oss-20b` |
 
-> **Why `gemma-4-E2B-it`?** A compact, capable instruction-tuned model that runs comfortably on the local machine via llama.cpp's OpenAI-compatible server.
-
-**Start the server locally:**
-
-```powershell
-llama-server -hf ggml-org/gemma-4-E2B-it-GGUF --port 8080
-```
-
-This downloads the model from Hugging Face on first run and serves it at `http://127.0.0.1:8080` (OpenAI-compatible `/v1/chat/completions` endpoint).
-
-Verify it is up:
-
-```powershell
-Invoke-RestMethod http://localhost:8080/v1/models
-```
-
-The agent connects via `LLM_BASE_URL=http://localhost:8080/v1` (set in `.env`). When running the agent in Docker on the same machine, use `http://host.docker.internal:8080/v1` instead — the `host.docker.internal` alias is already configured in `docker-compose.yml`.
+Set `LLM_BASE_URL=https://openrouter.ai/api/v1` and `LLM_MODEL=openai/gpt-oss-20b` in `.env`. Create an API key at [OpenRouter](https://openrouter.ai/settings/keys) and set `LLM_API_KEY`; keep the key out of source control.
 
 ---
 
@@ -72,7 +56,7 @@ sisyphus/
     │   ├── web_search.py    # DuckDuckGo (no API key required)
     │   └── pdf_reader.py    # fetch + extract text from PDF URLs
     └── dashboard/
-        ├── app.py           # FastAPI read-only dashboard
+        ├── app.py           # FastAPI dashboard and objective controls
         └── templates/
             └── index.html
 ```
@@ -91,14 +75,14 @@ Key variables:
 
 | Variable | Description |
 | --- | --- |
-| `LLM_BASE_URL` | llama-server OpenAI-compatible endpoint, e.g. `http://localhost:8080/v1` |
-| `LLM_MODEL` | Model name, e.g. `gemma-4-E2B-it` |
-| `LLM_API_KEY` | API key (ignored by llama-server; defaults to `not-needed`) |
+| `LLM_BASE_URL` | OpenRouter API endpoint, `https://openrouter.ai/api/v1` |
+| `LLM_MODEL` | OpenRouter model id, `openai/gpt-oss-20b` |
+| `LLM_API_KEY` | Required OpenRouter API key |
 | `GMAIL_USER` | Dedicated agent Gmail account |
 | `GMAIL_APP_PASSWORD` | Gmail App Password (see below) |
 | `NOTIFY_EMAIL` | Where to send reports and feedback requests |
 | `DASHBOARD_PORT` | Dashboard port (default: `7070`) |
-| `RESEARCH_INTERVAL_MINUTES` | How often a research cycle runs (default: `60`) |
+| `RESEARCH_INTERVAL_MINUTES` | How often scheduled research runs (default: `120`) |
 | `INBOX_CHECK_INTERVAL_MINUTES` | How often the inbox is polled (default: `15`) |
 | `DAILY_REPORT_HOUR` | UTC hour for the daily report email (default: `8`) |
 
@@ -206,20 +190,21 @@ The live `data/` directory and `.env` on the NAS are **never overwritten** by th
 | Job | Frequency | Action |
 | --- | --- | --- |
 | `check_inbox` | Every 15 min | Polls Gmail IMAP for replies; passes content to LLM → updates goals |
-| `run_research` | Every 2 hours | Runs a LangGraph research cycle for each active goal |
+| `run_research` | Every 2 hours by default | Runs active goals, starting with never-researched or oldest-researched objectives |
 | `send_report` | Daily at 08:00 UTC | Compiles and emails a summary of recent research |
 
 ### Research cycle (LangGraph)
 
 ```
 agent → (tool calls?) → tools → agent
-      → (RESEARCH_COMPLETE) → critique → (insufficient?) → agent
-                                              (sufficient?) → store → END
+    → (turn budget reached) → synthesize → critique
+    → (insufficient?) → bounded research pass
+    → (sufficient or review limit reached) → store → END
 ```
 
 The agent plans, calls `web_search` / `read_pdf` as needed, then writes findings to ChromaDB (semantic memory) and SQLite (research log).
 
-A **self-critique** step runs before results are stored: an independent LLM call reviews the summary against the goal and its rationale. If the research is found insufficient (gaps, unverified claims, not addressing the rationale), the agent is sent back to do more work — up to 2 critique rounds. This prevents the agent from stopping early with shallow results.
+A **self-critique** step runs before results are stored: an independent LLM call reviews the summary against the goal and its rationale. Each pass has a 12-turn research budget; reaching it triggers a synthesis rather than storing a partial tool-call response. If review finds gaps, the agent gets another bounded pass, up to 2 critique retries. Objectives remain active across scheduled runs, with previous research used as a baseline.
 
 ### Memory
 
@@ -239,17 +224,18 @@ Each goal has:
 
 To add or change goals:
 
-- **Dashboard UI** — create, edit, deactivate, or delete goals directly at [http://localhost:7070](http://localhost:7070). Each goal shows its rationale inline; click *edit* to modify any field.
+- **Dashboard UI** — create, edit, pause/resume, or delete goals directly at [http://localhost:7070](http://localhost:7070). Each objective shows its priority, research count, and last worked time.
 - **Email the agent** — reply to any of its emails with instructions. The agent parses the intent with the LLM and will **create new goals** for new topics/intents, or update/deactivate existing goals as appropriate.
 
 ---
 
 ## Dashboard
 
-Read-only web UI at `http://nas-ip:7070`:
+Web UI at `http://nas-ip:7070`:
 
-- Active goals with priorities
-- Recent research log (last 10 entries)
+- Active and paused objectives, with per-objective research history
+- Configured research cadence
+- Recent research log (last 10 entries) with source links on detail pages
 - Emails sent (last 5)
 - Memory document count
 
