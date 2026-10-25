@@ -83,8 +83,9 @@ async def dashboard(request: Request):
     paused_goals = [goal for goal in all_goals if not goal["active"]]
 
     return templates.TemplateResponse(
-        "index.html",
-        {
+        request=request,
+        name="index.html",
+        context={
             "request": request,
             "goals": goals,
             "paused_goals": paused_goals,
@@ -201,8 +202,9 @@ async def research_detail(request: Request, entry_id: int):
             "goal": goal,
         }
     return templates.TemplateResponse(
-        "research_detail.html",
-        {"request": request, "entry": data},
+        request=request,
+        name="research_detail.html",
+        context={"entry": data},
     )
 
 
