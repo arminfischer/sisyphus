@@ -481,14 +481,7 @@
           <a
             class="context-all"
             href="/chat"
-            {%
-            if
-            not
-            selected_goal
-            %}aria-current="page"
-            {%
-            endif
-            %}
+            {{ 'aria-current="page"' if not selected_goal else '' }}
             >All goals</a
           >
           <form class="goal-picker" method="get" action="/chat">
@@ -500,28 +493,14 @@
               <option
                 value=""
                 disabled
-                {%
-                if
-                not
-                selected_goal
-                %}selected{%
-                endif
-                %}
+                {{ 'selected' if not selected_goal else '' }}
               >
                 Goal threads
               </option>
               {% for goal in goals %}
               <option
                 value="{{ goal.id }}"
-                {%
-                if
-                selected_goal
-                and
-                selected_goal.id=""
-                ="goal.id"
-                %}selected{%
-                endif
-                %}
+                {{ 'selected' if selected_goal and selected_goal.id in [goal.id] else '' }}
               >
                 {{ goal.title }}{% if not goal.active %} · paused{% endif %}
               </option>
