@@ -903,26 +903,14 @@
                 {% for g in goals %}
                 <option
                   value="{{ g.id }}"
-                  {%
-                  if
-                  selected_goal_id=""
-                  ="g.id"
-                  %}selected{%
-                  endif
-                  %}
+                  {% if selected_goal_id == g.id %}selected{% endif %}
                 >
                   {{ g.title }}
                 </option>
                 {% endfor %} {% for g in paused_goals %}
                 <option
                   value="{{ g.id }}"
-                  {%
-                  if
-                  selected_goal_id=""
-                  ="g.id"
-                  %}selected{%
-                  endif
-                  %}
+                  {% if selected_goal_id == g.id %}selected{% endif %}
                 >
                   {{ g.title }} · paused
                 </option>
