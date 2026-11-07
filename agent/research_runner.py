@@ -85,7 +85,9 @@ def _reserve_run(trigger: str, goals: list[dict], goal_id: int | None) -> int:
                 trigger=trigger,
                 status="queued",
                 goal_id=goal_id,
-                goal_title=goals[0]["title"] if goal_id is not None else "All active goals",
+                goal_title=(
+                    goals[0]["title"] if goal_id is not None else "All active goals"
+                ),
                 total_goals=len(goals),
             )
             session.add(run)
@@ -115,7 +117,9 @@ def _execute_run(run_id: int, goals: list[dict]) -> None:
                 summary, needs_feedback = run_research_cycle(goal)
                 if needs_feedback:
                     match = re.search(r"FEEDBACK_NEEDED:\s*(.+)", summary)
-                    question = match.group(1).strip() if match else "General input needed."
+                    question = (
+                        match.group(1).strip() if match else "General input needed."
+                    )
                     send_feedback_request(
                         goal["title"],
                         f"Goal: {goal['title']}\n\n"

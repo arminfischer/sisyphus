@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="data:," />
-    <title>Sisyphus | {{ selected_goal.title if selected_goal else "Research chat" }}</title>
+    <title>
+      Sisyphus | {{ selected_goal.title if selected_goal else "Research chat" }}
+    </title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -27,41 +29,169 @@
         --serif: "Fraunces", Georgia, serif;
         --mono: "DM Mono", Consolas, monospace;
       }
-      *, *::before, *::after { box-sizing: border-box; }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
         min-height: 100vh;
         background-color: var(--paper);
-        background-image: linear-gradient(90deg, rgba(37, 109, 85, 0.035) 1px, transparent 1px);
+        background-image: linear-gradient(
+          90deg,
+          rgba(37, 109, 85, 0.035) 1px,
+          transparent 1px
+        );
         background-size: 40px 100%;
         color: var(--ink);
         font-family: var(--sans);
         font-size: 14px;
         line-height: 1.5;
       }
-      button, textarea { font: inherit; }
-      .shell { max-width: 1080px; min-height: 100vh; margin: 0 auto; padding: 0 36px; display: flex; flex-direction: column; }
-      .topbar { min-height: 68px; display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 1px solid var(--line); }
-      .brand { display: flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; }
-      .brand-mark { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--green); color: var(--green); font-family: var(--serif); font-size: 19px; }
-      .brand-name { font-family: var(--serif); font-size: 20px; }
-      .nav { display: flex; gap: 19px; }
-      .nav a { color: var(--muted); text-decoration: none; font-size: 13px; }
-      .nav a[aria-current="page"], .nav a:hover { color: var(--green); }
-      main { width: 100%; max-width: 800px; margin: 0 auto; padding: 38px 0 0; flex: 1; display: flex; flex-direction: column; }
-      .heading-row { display: flex; justify-content: space-between; align-items: end; gap: 20px; padding-bottom: 19px; border-bottom: 1px solid var(--ink); }
-      .eyebrow { color: var(--green); font-family: var(--mono); font-size: 10px; text-transform: uppercase; }
-      h1 { margin: 5px 0 0; font-family: var(--serif); font-size: 34px; font-weight: 500; }
-      .clear-button { border: 0; background: transparent; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
-      .goal-context { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
-      .context-all { color: var(--green); font-size: 12px; text-decoration: none; }
-      .context-all[aria-current="page"] { font-weight: 700; }
-      .goal-picker { min-width: 0; }
-      .goal-picker select { max-width: 310px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); padding: 7px 9px; }
-      .focus-rationale { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
-      .mode-switch { display: inline-flex; gap: 2px; margin-top: 21px; padding: 3px; border: 1px solid var(--line); border-radius: 4px; background: #e8ebe4; }
-      .mode-button { min-width: 86px; border: 0; border-radius: 2px; background: transparent; color: var(--muted); padding: 7px 12px; }
-      .mode-button[aria-pressed="true"] { background: var(--surface); color: var(--green); box-shadow: 0 1px 3px rgba(29, 41, 37, 0.12); }
+      button,
+      textarea {
+        font: inherit;
+      }
+      .shell {
+        max-width: 1080px;
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: 0 36px;
+        display: flex;
+        flex-direction: column;
+      }
+      .topbar {
+        min-height: 68px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        color: var(--ink);
+        text-decoration: none;
+      }
+      .brand-mark {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--green);
+        color: var(--green);
+        font-family: var(--serif);
+        font-size: 19px;
+      }
+      .brand-name {
+        font-family: var(--serif);
+        font-size: 20px;
+      }
+      .nav {
+        display: flex;
+        gap: 19px;
+      }
+      .nav a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 13px;
+      }
+      .nav a[aria-current="page"],
+      .nav a:hover {
+        color: var(--green);
+      }
+      main {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 38px 0 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .heading-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 20px;
+        padding-bottom: 19px;
+        border-bottom: 1px solid var(--ink);
+      }
+      .eyebrow {
+        color: var(--green);
+        font-family: var(--mono);
+        font-size: 10px;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 5px 0 0;
+        font-family: var(--serif);
+        font-size: 34px;
+        font-weight: 500;
+      }
+      .clear-button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .goal-context {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 18px;
+      }
+      .context-all {
+        color: var(--green);
+        font-size: 12px;
+        text-decoration: none;
+      }
+      .context-all[aria-current="page"] {
+        font-weight: 700;
+      }
+      .goal-picker {
+        min-width: 0;
+      }
+      .goal-picker select {
+        max-width: 310px;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        background: var(--surface);
+        color: var(--ink);
+        padding: 7px 9px;
+      }
+      .focus-rationale {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .mode-switch {
+        display: inline-flex;
+        gap: 2px;
+        margin-top: 21px;
+        padding: 3px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: #e8ebe4;
+      }
+      .mode-button {
+        min-width: 86px;
+        border: 0;
+        border-radius: 2px;
+        background: transparent;
+        color: var(--muted);
+        padding: 7px 12px;
+      }
+      .mode-button[aria-pressed="true"] {
+        background: var(--surface);
+        color: var(--green);
+        box-shadow: 0 1px 3px rgba(29, 41, 37, 0.12);
+      }
       .conversation {
         flex: 1;
         min-height: 280px;
@@ -70,107 +200,400 @@
         padding: 13px 0 20px;
         scroll-behavior: smooth;
       }
-      .empty-state { min-height: 250px; display: grid; place-items: center; color: var(--faint); font-family: var(--serif); font-size: 21px; text-align: center; }
-      .message { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 16px; padding: 19px 0; border-bottom: 1px solid var(--line); animation: message-in 220ms ease-out both; }
-      .message-meta { padding-top: 2px; color: var(--muted); font-family: var(--mono); font-size: 10px; text-transform: uppercase; }
-      .message[data-role="user"] .message-meta { color: var(--rust); }
-      .message-content { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-      .message[data-role="user"] .message-content { white-space: pre-wrap; }
-      .message[data-role="assistant"] .message-content { color: #30433a; }
-      .message-content > :first-child { margin-top: 0; }
-      .message-content > :last-child { margin-bottom: 0; }
-      .message-content p { margin: 0 0 0.75rem; }
-      .message-content h1, .message-content h2, .message-content h3,
-      .message-content h4, .message-content h5, .message-content h6 {
+      .empty-state {
+        min-height: 250px;
+        display: grid;
+        place-items: center;
+        color: var(--faint);
+        font-family: var(--serif);
+        font-size: 21px;
+        text-align: center;
+      }
+      .message {
+        display: grid;
+        grid-template-columns: 90px minmax(0, 1fr);
+        gap: 16px;
+        padding: 19px 0;
+        border-bottom: 1px solid var(--line);
+        animation: message-in 220ms ease-out both;
+      }
+      .message-meta {
+        padding-top: 2px;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 10px;
+        text-transform: uppercase;
+      }
+      .message[data-role="user"] .message-meta {
+        color: var(--rust);
+      }
+      .message-content {
+        min-width: 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      .message[data-role="user"] .message-content {
+        white-space: pre-wrap;
+      }
+      .message[data-role="assistant"] .message-content {
+        color: #30433a;
+      }
+      .message-content > :first-child {
+        margin-top: 0;
+      }
+      .message-content > :last-child {
+        margin-bottom: 0;
+      }
+      .message-content p {
+        margin: 0 0 0.75rem;
+      }
+      .message-content h1,
+      .message-content h2,
+      .message-content h3,
+      .message-content h4,
+      .message-content h5,
+      .message-content h6 {
         margin: 1rem 0 0.5rem;
         color: var(--ink);
         font-family: var(--serif);
         font-weight: 500;
         line-height: 1.3;
       }
-      .message-content h1 { font-size: 1.35rem; }
-      .message-content h2 { font-size: 1.2rem; }
-      .message-content h3, .message-content h4, .message-content h5, .message-content h6 { font-size: 1.05rem; }
-      .message-content ul, .message-content ol { margin: 0.4rem 0 0.8rem; padding-left: 1.3rem; }
-      .message-content li { margin: 0.2rem 0; }
-      .message-content blockquote { margin: 0.7rem 0; padding-left: 0.85rem; border-left: 2px solid #a9c5b2; color: var(--muted); }
-      .message-content pre { max-width: 100%; overflow-x: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: #edf1eb; }
-      .message-content code { padding: 0.08em 0.3em; border-radius: 2px; background: #e8ece6; font-family: var(--mono); font-size: 0.9em; }
-      .message-content pre code { padding: 0; background: transparent; }
-      .message-content table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 0.75rem 0; font-size: 12px; }
-      .message-content th, .message-content td { padding: 6px 9px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
-      .message-content th { background: var(--green-soft); color: var(--ink); }
-      .message-content a { color: var(--green); overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 2px; }
-      .message-sources { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
-      .source-link { border-bottom: 1px solid #a9c5b2; color: var(--green); font-size: 11px; text-decoration: none; }
-      .source-link:hover { border-color: var(--green); }
-      .composer { position: sticky; bottom: 0; padding: 14px 0 25px; background: linear-gradient(180deg, rgba(243, 244, 238, 0), var(--paper) 18%); }
-      .composer-box { padding: 10px; border: 1px solid #bbc9bf; border-radius: 4px; background: var(--surface); box-shadow: 0 7px 22px rgba(29, 41, 37, 0.06); }
-      textarea { display: block; width: 100%; min-height: 68px; max-height: 200px; resize: vertical; border: 0; outline: 0; background: transparent; color: var(--ink); padding: 7px; line-height: 1.5; }
-      textarea::placeholder { color: #929d95; }
-      .composer-actions { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 6px; }
-      .send-button { min-height: 36px; border: 1px solid var(--green); border-radius: 3px; background: var(--green); color: white; padding: 7px 14px; cursor: pointer; }
-      .send-button:hover { background: #1d5b46; }
-      .send-button:disabled { opacity: 0.55; cursor: wait; }
-      .error { color: var(--rust); }
-      @keyframes message-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-      @media (max-width: 620px) {
-        .shell { padding: 0 17px; }
-        .topbar { min-height: 60px; }
-        main { padding-top: 26px; }
-        h1 { font-size: 29px; }
-        .conversation { max-height: calc(100vh - 330px); }
-        .message { grid-template-columns: 59px minmax(0, 1fr); gap: 10px; }
-        .composer { padding-bottom: 15px; }
+      .message-content h1 {
+        font-size: 1.35rem;
       }
-      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; } }
+      .message-content h2 {
+        font-size: 1.2rem;
+      }
+      .message-content h3,
+      .message-content h4,
+      .message-content h5,
+      .message-content h6 {
+        font-size: 1.05rem;
+      }
+      .message-content ul,
+      .message-content ol {
+        margin: 0.4rem 0 0.8rem;
+        padding-left: 1.3rem;
+      }
+      .message-content li {
+        margin: 0.2rem 0;
+      }
+      .message-content blockquote {
+        margin: 0.7rem 0;
+        padding-left: 0.85rem;
+        border-left: 2px solid #a9c5b2;
+        color: var(--muted);
+      }
+      .message-content pre {
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        background: #edf1eb;
+      }
+      .message-content code {
+        padding: 0.08em 0.3em;
+        border-radius: 2px;
+        background: #e8ece6;
+        font-family: var(--mono);
+        font-size: 0.9em;
+      }
+      .message-content pre code {
+        padding: 0;
+        background: transparent;
+      }
+      .message-content table {
+        display: block;
+        width: max-content;
+        max-width: 100%;
+        overflow-x: auto;
+        border-collapse: collapse;
+        margin: 0.75rem 0;
+        font-size: 12px;
+      }
+      .message-content th,
+      .message-content td {
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      .message-content th {
+        background: var(--green-soft);
+        color: var(--ink);
+      }
+      .message-content a {
+        color: var(--green);
+        overflow-wrap: anywhere;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      .message-sources {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-top: 11px;
+      }
+      .source-link {
+        border-bottom: 1px solid #a9c5b2;
+        color: var(--green);
+        font-size: 11px;
+        text-decoration: none;
+      }
+      .source-link:hover {
+        border-color: var(--green);
+      }
+      .composer {
+        position: sticky;
+        bottom: 0;
+        padding: 14px 0 25px;
+        background: linear-gradient(
+          180deg,
+          rgba(243, 244, 238, 0),
+          var(--paper) 18%
+        );
+      }
+      .composer-box {
+        padding: 10px;
+        border: 1px solid #bbc9bf;
+        border-radius: 4px;
+        background: var(--surface);
+        box-shadow: 0 7px 22px rgba(29, 41, 37, 0.06);
+      }
+      textarea {
+        display: block;
+        width: 100%;
+        min-height: 68px;
+        max-height: 200px;
+        resize: vertical;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--ink);
+        padding: 7px;
+        line-height: 1.5;
+      }
+      textarea::placeholder {
+        color: #929d95;
+      }
+      .composer-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 12px;
+        margin-top: 6px;
+      }
+      .send-button {
+        min-height: 36px;
+        border: 1px solid var(--green);
+        border-radius: 3px;
+        background: var(--green);
+        color: white;
+        padding: 7px 14px;
+        cursor: pointer;
+      }
+      .send-button:hover {
+        background: #1d5b46;
+      }
+      .send-button:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      .error {
+        color: var(--rust);
+      }
+      @keyframes message-in {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @media (max-width: 620px) {
+        .shell {
+          padding: 0 17px;
+        }
+        .topbar {
+          min-height: 60px;
+        }
+        main {
+          padding-top: 26px;
+        }
+        h1 {
+          font-size: 29px;
+        }
+        .conversation {
+          max-height: calc(100vh - 330px);
+        }
+        .message {
+          grid-template-columns: 59px minmax(0, 1fr);
+          gap: 10px;
+        }
+        .composer {
+          padding-bottom: 15px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.01ms !important;
+        }
+      }
     </style>
   </head>
   <body>
     <div class="shell">
       <header class="topbar">
-        <a class="brand" href="/" aria-label="Sisyphus research desk"><span class="brand-mark" aria-hidden="true">S</span><span class="brand-name">Sisyphus</span></a>
-        <nav class="nav" aria-label="Main navigation"><a href="/">Desk</a><a href="/chat" aria-current="page">Chat</a></nav>
+        <a class="brand" href="/" aria-label="Sisyphus research desk"
+          ><span class="brand-mark" aria-hidden="true">S</span
+          ><span class="brand-name">Sisyphus</span></a
+        >
+        <nav class="nav" aria-label="Main navigation">
+          <a href="/">Desk</a><a href="/chat" aria-current="page">Chat</a>
+        </nav>
       </header>
       <main>
         <div class="heading-row">
-          <div><div class="eyebrow">{% if selected_goal %}Goal thread{% else %}Research channel{% endif %}</div><h1>{{ selected_goal.title if selected_goal else "Conversation" }}</h1></div>
-          <button class="clear-button" id="clear-chat" type="button">Clear history</button>
+          <div>
+            <div class="eyebrow">
+              {% if selected_goal %}Goal thread{% else %}Research channel{%
+              endif %}
+            </div>
+            <h1>
+              {{ selected_goal.title if selected_goal else "Conversation" }}
+            </h1>
+          </div>
+          <button class="clear-button" id="clear-chat" type="button">
+            Clear history
+          </button>
         </div>
-        {% if selected_goal and selected_goal.rationale %}<p class="focus-rationale">{{ selected_goal.rationale }}</p>{% endif %}
+        {% if selected_goal and selected_goal.rationale %}
+        <p class="focus-rationale">{{ selected_goal.rationale }}</p>
+        {% endif %}
         <div class="goal-context">
-          <a class="context-all" href="/chat" {% if not selected_goal %}aria-current="page"{% endif %}>All goals</a>
+          <a
+            class="context-all"
+            href="/chat"
+            {%
+            if
+            not
+            selected_goal
+            %}aria-current="page"
+            {%
+            endif
+            %}
+            >All goals</a
+          >
           <form class="goal-picker" method="get" action="/chat">
-            <select name="goal_id" aria-label="Choose a goal conversation" onchange="this.form.submit()">
-              <option value="" disabled {% if not selected_goal %}selected{% endif %}>Goal threads</option>
-              {% for goal in goals %}<option value="{{ goal.id }}" {% if selected_goal and selected_goal.id == goal.id %}selected{% endif %}>{{ goal.title }}{% if not goal.active %} · paused{% endif %}</option>{% endfor %}
+            <select
+              name="goal_id"
+              aria-label="Choose a goal conversation"
+              onchange="this.form.submit()"
+            >
+              <option
+                value=""
+                disabled
+                {%
+                if
+                not
+                selected_goal
+                %}selected{%
+                endif
+                %}
+              >
+                Goal threads
+              </option>
+              {% for goal in goals %}
+              <option
+                value="{{ goal.id }}"
+                {%
+                if
+                selected_goal
+                and
+                selected_goal.id=""
+                ="goal.id"
+                %}selected{%
+                endif
+                %}
+              >
+                {{ goal.title }}{% if not goal.active %} · paused{% endif %}
+              </option>
+              {% endfor %}
             </select>
           </form>
         </div>
         <div class="mode-switch" role="group" aria-label="Chat mode">
-          <button class="mode-button" type="button" data-mode="ask" aria-pressed="true">Ask</button>
-          <button class="mode-button" type="button" data-mode="steer" aria-pressed="false">Steer</button>
+          <button
+            class="mode-button"
+            type="button"
+            data-mode="ask"
+            aria-pressed="true"
+          >
+            Ask
+          </button>
+          <button
+            class="mode-button"
+            type="button"
+            data-mode="steer"
+            aria-pressed="false"
+          >
+            Steer
+          </button>
         </div>
-        <section class="conversation" id="conversation" aria-live="polite" aria-label="Conversation">
-          {% if messages %}
-            {% for message in messages %}
-            <article class="message" data-role="{{ message.role }}">
-              <div class="message-meta">{{ "You" if message.role == "user" else "Sisyphus" }} · {{ message.mode }}</div>
-              <div>
-                <div class="message-content">{% if message.role == "assistant" %}{{ message.content_html | safe }}{% else %}{{ message.content }}{% endif %}</div>
-                {% if message.sources %}<div class="message-sources">{% for source in message.sources %}<a class="source-link" href="{{ source.url }}">{{ source.ref }} · {{ source.title }}</a>{% endfor %}</div>{% endif %}
+        <section
+          class="conversation"
+          id="conversation"
+          aria-live="polite"
+          aria-label="Conversation"
+        >
+          {% if messages %} {% for message in messages %}
+          <article class="message" data-role="{{ message.role }}">
+            <div class="message-meta">
+              {{ "You" if message.role == "user" else "Sisyphus" }} · {{
+              message.mode }}
+            </div>
+            <div>
+              <div class="message-content">
+                {% if message.role == "assistant" %}{{ message.content_html |
+                safe }}{% else %}{{ message.content }}{% endif %}
               </div>
-            </article>
-            {% endfor %}
-          {% else %}
-            <div class="empty-state" id="empty-state">A clear line of inquiry begins here.</div>
+              {% if message.sources %}
+              <div class="message-sources">
+                {% for source in message.sources %}<a
+                  class="source-link"
+                  href="{{ source.url }}"
+                  >{{ source.ref }} · {{ source.title }}</a
+                >{% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </article>
+          {% endfor %} {% else %}
+          <div class="empty-state" id="empty-state">
+            A clear line of inquiry begins here.
+          </div>
           {% endif %}
         </section>
         <form class="composer" id="chat-form">
           <div class="composer-box">
-            <textarea id="chat-input" maxlength="8000" placeholder="Message Sisyphus…" aria-label="Message Sisyphus" required></textarea>
+            <textarea
+              id="chat-input"
+              maxlength="8000"
+              placeholder="Message Sisyphus…"
+              aria-label="Message Sisyphus"
+              required
+            ></textarea>
             <div class="composer-actions">
-              <button class="send-button" id="send-button" type="submit">Send</button>
+              <button class="send-button" id="send-button" type="submit">
+                Send
+              </button>
             </div>
           </div>
         </form>

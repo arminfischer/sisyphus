@@ -73,10 +73,7 @@ async def dashboard(request: Request, q: str = "", goal_id: int | None = None):
             research_query = research_query.filter(ResearchLog.goal_id == goal_id)
         research_count = research_query.count()
         recent_research = (
-            research_query
-            .order_by(ResearchLog.created_at.desc())
-            .limit(15)
-            .all()
+            research_query.order_by(ResearchLog.created_at.desc()).limit(15).all()
         )
         goal_progress = (
             session.query(
@@ -96,10 +93,7 @@ async def dashboard(request: Request, q: str = "", goal_id: int | None = None):
             .all()
         )
         recent_runs = (
-            session.query(ResearchRun)
-            .order_by(ResearchRun.id.desc())
-            .limit(6)
-            .all()
+            session.query(ResearchRun).order_by(ResearchRun.id.desc()).limit(6).all()
         )
         # Snapshot values while session is still open
         research_data = [
@@ -370,7 +364,9 @@ def _format_goal_directory(goals: list[dict]) -> str:
         for goal in group:
             description = goal.get("description", "").strip()
             detail = f": {description}" if description else ""
-            lines.append(f"- #{goal['id']} [P{goal['priority']}] {goal['title']}{detail}")
+            lines.append(
+                f"- #{goal['id']} [P{goal['priority']}] {goal['title']}{detail}"
+            )
     return "\n".join(lines)
 
 
@@ -401,7 +397,11 @@ def _answer_from_research(
             source = {
                 "ref": reference,
                 "id": entry.id,
-                "title": f"{goal['title']} · report #{entry.id}" if goal else f"Research report #{entry.id}",
+                "title": (
+                    f"{goal['title']} · report #{entry.id}"
+                    if goal
+                    else f"Research report #{entry.id}"
+                ),
                 "created_at": str(entry.created_at),
                 "url": f"/research/{entry.id}",
             }
@@ -422,7 +422,11 @@ def _answer_from_research(
                 source = {
                     "ref": reference,
                     "id": entry.id,
-                    "title": f"{goal['title']} · report #{entry.id}" if goal else f"Research report #{entry.id}",
+                    "title": (
+                        f"{goal['title']} · report #{entry.id}"
+                        if goal
+                        else f"Research report #{entry.id}"
+                    ),
                     "created_at": str(entry.created_at),
                     "url": f"/research/{entry.id}",
                 }
@@ -463,7 +467,8 @@ def _answer_from_research(
             "research claims with supplied references such as [R1]. Never invent "
             "references. If the research does not answer a question, say so; do not "
             "use unrelated reports to answer it.\n\n"
-            "Goal directory:\n" + _format_goal_directory(goals)
+            "Goal directory:\n"
+            + _format_goal_directory(goals)
             + focus_context
             + "\n\nSaved research:\n"
             + evidence
@@ -483,7 +488,9 @@ def _answer_from_research(
         temperature=0.2,
         max_tokens=1400,
     ).invoke(chat_messages)
-    answer = response.content if isinstance(response.content, str) else str(response.content)
+    answer = (
+        response.content if isinstance(response.content, str) else str(response.content)
+    )
     return answer, sources
 
 
@@ -575,9 +582,7 @@ def _parse_run_request(message: str) -> tuple[bool, int | None, str]:
     if title_match:
         requested_title = title_match.group(1).strip().casefold()
         matches = [
-            goal
-            for goal in load_goals()
-            if goal["title"].casefold() == requested_title
+            goal for goal in load_goals() if goal["title"].casefold() == requested_title
         ]
         if len(matches) == 1:
             return True, matches[0]["id"], matches[0]["title"]
