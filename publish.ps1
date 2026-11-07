@@ -88,7 +88,7 @@ if ($process.ExitCode -le 3) {
     Write-Host ""
     Write-Host "--- Remote docker compose restart ---" -ForegroundColor Green
 
-    $sshCommand = "cd $RemotePath && sudo /usr/local/bin/docker compose down && sudo /usr/local/bin/docker compose build sisyphus --no-cache && sudo /usr/local/bin/docker compose up -d"
+    $sshCommand = "cd $RemotePath && sudo /usr/local/bin/docker compose down && sudo /usr/local/bin/docker compose build sisyphus && sudo /usr/local/bin/docker compose up -d"
 
     Write-Host "SSH: ssh.exe -tt $RemoteHost $sshCommand" -ForegroundColor Gray
     Write-Host "Enter the SSH or sudo password in this terminal if prompted." -ForegroundColor Yellow
