@@ -63,6 +63,36 @@ class EmailLog(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class ResearchRun(Base):
+    __tablename__ = "research_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trigger = Column(String(16), nullable=False)
+    status = Column(String(16), nullable=False, default="queued")
+    goal_id = Column(Integer, nullable=True)
+    goal_title = Column(String(256), default="")
+    total_goals = Column(Integer, default=0, nullable=False)
+    completed_goals = Column(Integer, default=0, nullable=False)
+    current_goal_id = Column(Integer, nullable=True)
+    current_goal_title = Column(String(256), default="")
+    error = Column(Text, default="")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    goal_id = Column(Integer, nullable=True)
+    role = Column(String(16), nullable=False)
+    mode = Column(String(16), nullable=False, default="ask")
+    content = Column(Text, nullable=False)
+    sources = Column(Text, default="[]")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class Feedback(Base):
     __tablename__ = "feedback"
 
@@ -75,6 +105,7 @@ class Feedback(Base):
 def init_db() -> None:
     Base.metadata.create_all(engine)
     _migrate_goal_rationale()
+    _migrate_chat_message_goal()
 
 
 def _migrate_goal_rationale() -> None:
@@ -86,6 +117,17 @@ def _migrate_goal_rationale() -> None:
     if "rationale" not in columns:
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE goals ADD COLUMN rationale TEXT DEFAULT ''"))
+
+
+def _migrate_chat_message_goal() -> None:
+    """Add nullable goal context to existing chat messages without changing history."""
+    inspector = inspect(engine)
+    if "chat_messages" not in inspector.get_table_names():
+        return
+    columns = {c["name"] for c in inspector.get_columns("chat_messages")}
+    if "goal_id" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE chat_messages ADD COLUMN goal_id INTEGER"))
 
 
 def get_session() -> Session:

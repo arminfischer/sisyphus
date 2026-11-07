@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>Sisyphus | Research desk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f3f4ee;
+        --surface: #fbfcf8;
+        --ink: #1d2925;
+        --muted: #64716b;
+        --faint: #849089;
+        --line: #d7ded7;
+        --green: #256d55;
+        --green-soft: #e2eee6;
+        --rust: #a64e38;
+        --rust-soft: #f5e7e1;
+        --yellow: #dfb447;
+        --sans: "DM Sans", "Segoe UI", sans-serif;
+        --serif: "Fraunces", Georgia, serif;
+        --mono: "DM Mono", Consolas, monospace;
+      }
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background-color: var(--paper);
+        background-image: linear-gradient(90deg, rgba(37, 109, 85, 0.035) 1px, transparent 1px);
+        background-size: 40px 100%;
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      a { color: inherit; }
+      button, input, select, textarea { font: inherit; }
+      button, summary { cursor: pointer; }
+      .shell { max-width: 1440px; margin: 0 auto; padding: 0 42px 64px; }
+      .topbar {
+        min-height: 68px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+      .brand-mark {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--green);
+        color: var(--green);
+        font-family: var(--serif);
+        font-size: 19px;
+      }
+      .brand-name { font-family: var(--serif); font-size: 20px; }
+      .topbar-right { display: flex; align-items: center; gap: 24px; }
+      .nav { display: flex; gap: 19px; }
+      .nav a { color: var(--muted); text-decoration: none; font-size: 13px; }
+      .nav a[aria-current="page"], .nav a:hover { color: var(--green); }
+      .system-state, .eyebrow, .section-kicker, .metric-label, .entry-meta, .priority {
+        font-family: var(--mono);
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0;
+      }
+      .system-state { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+      .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+      .intro {
+        padding: 42px 0 26px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 32px;
+      }
+      .eyebrow { color: var(--green); display: flex; align-items: center; gap: 9px; }
+      h1 { margin: 11px 0 0; font-family: var(--serif); font-size: 43px; font-weight: 500; line-height: 1.1; }
+      .intro-date { margin-top: 8px; color: var(--muted); font-size: 13px; }
+      .primary-action, .button, .icon-button {
+        min-height: 38px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        padding: 8px 13px;
+        border-radius: 3px;
+        text-decoration: none;
+      }
+      .primary-action { display: inline-flex; align-items: center; gap: 9px; background: var(--green); border-color: var(--green); color: #fff; }
+      .primary-action:hover { background: #1d5b46; }
+      .primary-action:disabled { opacity: 0.5; cursor: not-allowed; }
+      .button:hover, .icon-button:hover { border-color: var(--green); color: var(--green); }
+      .button-danger { color: var(--rust); }
+      .button-danger:hover { border-color: var(--rust); background: var(--rust-soft); }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+      }
+      .metric { min-height: 94px; padding: 17px 20px; border-right: 1px solid var(--line); }
+      .metric:last-child { border-right: 0; }
+      .metric-label { color: var(--muted); }
+      .metric-value { margin-top: 5px; font-family: var(--serif); font-size: 29px; line-height: 1.1; }
+      .metric-note { margin-top: 4px; color: var(--faint); font-size: 11px; }
+      .run-strip {
+        margin-top: 17px;
+        padding: 13px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        min-height: 50px;
+        border-left: 3px solid var(--yellow);
+        background: #faf6e9;
+      }
+      .run-strip[data-status="completed"] { border-color: var(--green); background: var(--green-soft); }
+      .run-strip[data-status="partial"], .run-strip[data-status="failed"] { border-color: var(--rust); background: var(--rust-soft); }
+      .run-copy { min-width: 0; }
+      .run-title { font-weight: 600; }
+      .run-detail { color: var(--muted); font-size: 12px; }
+      .run-progress { flex: 0 0 auto; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+      .workspace {
+        display: grid;
+        grid-template-columns: minmax(310px, 0.82fr) minmax(0, 1.5fr);
+        gap: 46px;
+        margin-top: 38px;
+      }
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 13px;
+        border-bottom: 1px solid var(--ink);
+      }
+      .section-kicker { color: var(--green); }
+      h2 { margin: 4px 0 0; font-family: var(--serif); font-size: 23px; font-weight: 500; }
+      .count { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+      .goal-row { padding: 18px 0; border-bottom: 1px solid var(--line); }
+      .goal-heading { display: flex; align-items: flex-start; gap: 12px; }
+      .priority { flex: 0 0 auto; padding: 4px 6px; background: var(--green-soft); color: var(--green); }
+      .goal-main { min-width: 0; flex: 1; }
+      .goal-title { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+      .goal-description { margin-top: 4px; color: var(--muted); font-size: 12px; }
+      .goal-rationale { margin-top: 8px; padding-left: 9px; border-left: 2px solid #a9c5b2; color: #426451; font-size: 12px; }
+      .goal-meta { margin-top: 9px; color: var(--faint); font-family: var(--mono); font-size: 10px; }
+      .goal-actions { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 0 34px; }
+      .button-small { min-height: 30px; padding: 5px 9px; font-size: 11px; }
+      details.goal-edit { margin: 12px 0 0 34px; }
+      details.goal-edit > summary, .paused-goals > summary, .new-goal > summary { color: var(--green); font-size: 12px; }
+      .form-grid { display: grid; grid-template-columns: 1fr 96px; gap: 10px; margin-top: 12px; }
+      .field { display: grid; gap: 5px; }
+      .field-wide { grid-column: 1 / -1; }
+      label { color: var(--muted); font-family: var(--mono); font-size: 10px; }
+      input, select, textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        background: var(--surface);
+        color: var(--ink);
+        padding: 9px 10px;
+      }
+      textarea { min-height: 72px; resize: vertical; }
+      input:focus, select:focus, textarea:focus { outline: 2px solid #a9c5b2; outline-offset: 1px; }
+      .new-goal, .paused-goals { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--line); }
+      .paused-goals { color: var(--muted); }
+      .paused-goals .goal-row { padding-left: 10px; }
+      .research-tools { margin: 18px 0 5px; display: grid; grid-template-columns: minmax(120px, 1fr) minmax(120px, 190px) auto; gap: 8px; }
+      .research-tools input, .research-tools select { min-width: 0; }
+      .research-tools .button { white-space: nowrap; }
+      .research-result { padding: 17px 0; border-bottom: 1px solid var(--line); }
+      .entry-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; color: var(--muted); }
+      .entry-meta a { color: var(--green); text-decoration: none; }
+      .entry-meta a:hover { text-decoration: underline; }
+      .entry-tag { padding: 2px 6px; background: var(--green-soft); color: var(--green); }
+      .research-title { display: inline-block; margin-top: 8px; font-size: 15px; font-weight: 600; text-decoration: none; }
+      .research-title:hover { color: var(--green); }
+      .research-excerpt { margin-top: 6px; color: #53625a; font-size: 12px; line-height: 1.65; white-space: pre-wrap; }
+      .empty { padding: 22px 0; color: var(--muted); }
+      .lower-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 46px; margin-top: 38px; }
+      .activity-row { padding: 11px 0; display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
+      .activity-title { font-size: 12px; }
+      .activity-meta { flex: 0 0 auto; color: var(--faint); font-family: var(--mono); font-size: 10px; }
+      .footer { margin-top: 50px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; color: var(--faint); font-family: var(--mono); font-size: 10px; }
+      .footer a { color: var(--muted); text-decoration: none; }
+      @media (max-width: 900px) {
+        .shell { padding: 0 24px 48px; }
+        .workspace { grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr); gap: 28px; }
+        .lower-grid { gap: 28px; }
+      }
+      @media (max-width: 680px) {
+        .shell { padding: 0 17px 36px; }
+        .topbar { min-height: 60px; }
+        .topbar-right { gap: 12px; }
+        .system-state { display: none; }
+        .nav { gap: 13px; }
+        .intro { padding-top: 30px; grid-template-columns: 1fr; align-items: start; gap: 17px; }
+        h1 { font-size: 36px; }
+        .metrics { grid-template-columns: 1fr 1fr; }
+        .metric { min-height: 82px; padding: 13px; border-bottom: 1px solid var(--line); }
+        .metric:nth-child(2) { border-right: 0; }
+        .metric:nth-child(n + 3) { border-bottom: 0; }
+        .metric-value { font-size: 25px; }
+        .workspace, .lower-grid { grid-template-columns: 1fr; gap: 33px; margin-top: 30px; }
+        .research-tools { grid-template-columns: 1fr 1fr; }
+        .research-tools input { grid-column: 1 / -1; }
+        .run-strip { align-items: flex-start; flex-direction: column; gap: 5px; }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .intro, .metrics, .workspace { animation: rise-in 420ms ease-out both; }
+        .metrics { animation-delay: 70ms; }
+        .workspace { animation-delay: 120ms; }
+        @keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Sisyphus research desk">
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <span class="brand-name">Sisyphus</span>
+        </a>
+        <div class="topbar-right">
+          <nav class="nav" aria-label="Main navigation">
+            <a href="/" aria-current="page">Desk</a>
+            <a href="/chat">Chat</a>
+          </nav>
+          <div class="system-state"><span class="dot"></span> Workspace live</div>
+        </div>
+      </header>
+
+      <main>
+        <section class="intro">
+          <div>
+            <div class="eyebrow"><span class="dot"></span> Research workspace</div>
+            <h1>Research desk</h1>
+          </div>
+          <form method="post" action="/runs">
+            <button class="primary-action" type="submit" {% if not goals %}disabled{% endif %}><span aria-hidden="true">+</span> Run all goals</button>
+          </form>
+        </section>
+
+        <section class="metrics" aria-label="Research overview">
+          <div class="metric">
+            <div class="metric-label">Active goals</div>
+            <div class="metric-value">{{ goals | length }}</div>
+            <div class="metric-note">{{ paused_goals | length }} paused</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Saved reports</div>
+            <div class="metric-value">{{ research_count }}</div>
+            <div class="metric-note">{{ research_interval_minutes }} minute cadence</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Memory documents</div>
+            <div class="metric-value">{{ mem_count }}</div>
+            <div class="metric-note">Semantic research index</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Recent emails</div>
+            <div class="metric-value">{{ emails | length }}</div>
+            <div class="metric-note">Latest five sent</div>
+          </div>
+        </section>
+
+        <section class="run-strip" id="run-status" aria-live="polite" data-status="{% if runs %}{{ runs[0].status }}{% else %}idle{% endif %}">
+          <div class="run-copy">
+            {% if runs and runs[0].status in ["queued", "running"] %}
+            <div class="run-title">Research run #{{ runs[0].id }} · {{ runs[0].status }}</div>
+            <div class="run-detail" id="run-detail">{% if runs[0].current_goal_title %}Working on {{ runs[0].current_goal_title }}{% else %}Preparing research queue{% endif %}</div>
+            {% elif runs %}
+            <div class="run-title">Last run · {{ runs[0].status }}</div>
+            <div class="run-detail" id="run-detail">{{ runs[0].goal_title }} · {% if runs[0].finished_at %}finished {{ runs[0].finished_at.strftime('%Y-%m-%d %H:%M') }} UTC{% else %}not started{% endif %}</div>
+            {% else %}
+            <div class="run-title">No research runs yet</div>
+            <div class="run-detail" id="run-detail"></div>
+            {% endif %}
+          </div>
+          <div class="run-progress" id="run-progress">{% if runs and runs[0].total_goals %}{{ runs[0].completed_goals }}/{{ runs[0].total_goals }} goals{% endif %}</div>
+        </section>
+
+        <div class="workspace">
+          <section aria-labelledby="goals-heading">
+            <div class="section-head">
+              <div><div class="section-kicker">01 / Direction</div><h2 id="goals-heading">Objectives</h2></div>
+              <span class="count">{{ goals | length }} active</span>
+            </div>
+            {% for g in goals %}
+            <article class="goal-row">
+              <div class="goal-heading">
+                <span class="priority">P{{ g.priority }}</span>
+                <div class="goal-main">
+                  <div class="goal-title">{{ g.title }}</div>
+                  {% if g.description %}<div class="goal-description">{{ g.description }}</div>{% endif %}
+                  {% if g.rationale %}<div class="goal-rationale">{{ g.rationale }}</div>{% endif %}
+                  <div class="goal-meta">{{ g.research_count }} cycles · {% if g.last_researched %}last worked {{ g.last_researched.strftime('%Y-%m-%d %H:%M') }} UTC{% else %}not yet researched{% endif %}</div>
+                </div>
+              </div>
+              <div class="goal-actions">
+                <form method="post" action="/runs"><input type="hidden" name="goal_id" value="{{ g.id }}" /><button class="button button-small" type="submit">Run goal</button></form>
+                <a class="button button-small" href="/chat?goal_id={{ g.id }}">Chat</a>
+                <form method="post" action="/goals/{{ g.id }}/deactivate"><button class="button button-small" type="submit">Pause</button></form>
+                <form method="post" action="/goals/{{ g.id }}/delete" onsubmit="return confirm('Permanently delete this goal?');"><button class="button button-small button-danger" type="submit">Delete</button></form>
+              </div>
+              <details class="goal-edit">
+                <summary>Edit objective</summary>
+                <form method="post" action="/goals/{{ g.id }}/edit" class="form-grid">
+                  <div class="field"><label for="title-{{ g.id }}">Title</label><input id="title-{{ g.id }}" name="title" value="{{ g.title }}" required /></div>
+                  <div class="field"><label for="priority-{{ g.id }}">Priority</label><input id="priority-{{ g.id }}" name="priority" type="number" min="1" max="9" value="{{ g.priority }}" /></div>
+                  <div class="field field-wide"><label for="description-{{ g.id }}">Description</label><textarea id="description-{{ g.id }}" name="description">{{ g.description }}</textarea></div>
+                  <div class="field field-wide"><label for="rationale-{{ g.id }}">Rationale</label><textarea id="rationale-{{ g.id }}" name="rationale">{{ g.rationale }}</textarea></div>
+                  <div class="field-wide"><button class="button button-small" type="submit">Save changes</button></div>
+                </form>
+              </details>
+            </article>
+            {% else %}
+            <p class="empty">No active objectives.</p>
+            {% endfor %}
+
+            <details class="new-goal">
+              <summary>Add objective</summary>
+              <form method="post" action="/goals/new" class="form-grid">
+                <div class="field"><label for="new-title">Title</label><input id="new-title" name="title" required /></div>
+                <div class="field"><label for="new-priority">Priority</label><input id="new-priority" name="priority" type="number" min="1" max="9" value="5" /></div>
+                <div class="field field-wide"><label for="new-description">Description</label><textarea id="new-description" name="description"></textarea></div>
+                <div class="field field-wide"><label for="new-rationale">Rationale</label><textarea id="new-rationale" name="rationale"></textarea></div>
+                <div class="field-wide"><button class="button button-small" type="submit">Create objective</button></div>
+              </form>
+            </details>
+
+            {% if paused_goals %}
+            <details class="paused-goals">
+              <summary>Paused objectives · {{ paused_goals | length }}</summary>
+              {% for g in paused_goals %}
+              <article class="goal-row">
+                <div class="goal-heading"><span class="priority" style="background:var(--rust-soft);color:var(--rust)">Paused</span><div class="goal-main"><div class="goal-title">{{ g.title }}</div><div class="goal-meta">{{ g.research_count }} cycles</div></div></div>
+                <div class="goal-actions"><a class="button button-small" href="/chat?goal_id={{ g.id }}">Chat</a><form method="post" action="/goals/{{ g.id }}/activate"><button class="button button-small" type="submit">Resume</button></form><form method="post" action="/goals/{{ g.id }}/delete" onsubmit="return confirm('Permanently delete this goal?');"><button class="button button-small button-danger" type="submit">Delete</button></form></div>
+              </article>
+              {% endfor %}
+            </details>
+            {% endif %}
+          </section>
+
+          <section aria-labelledby="research-heading">
+            <div class="section-head">
+              <div><div class="section-kicker">02 / Evidence</div><h2 id="research-heading">Research log</h2></div>
+              <span class="count">{{ research_count }} reports</span>
+            </div>
+            <form class="research-tools" method="get" action="/">
+              <input type="search" name="q" value="{{ query }}" placeholder="Search findings" aria-label="Search research findings" />
+              <select name="goal_id" aria-label="Filter by objective">
+                <option value="">All objectives</option>
+                {% for g in goals %}<option value="{{ g.id }}" {% if selected_goal_id == g.id %}selected{% endif %}>{{ g.title }}</option>{% endfor %}
+                {% for g in paused_goals %}<option value="{{ g.id }}" {% if selected_goal_id == g.id %}selected{% endif %}>{{ g.title }} · paused</option>{% endfor %}
+              </select>
+              <button class="button" type="submit">Search</button>
+            </form>
+            {% for r in research %}
+            <article class="research-result">
+              <div class="entry-meta"><time>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }} UTC</time>{% if r.goal_id %}<span class="entry-tag">{{ r.goal_title }}</span>{% endif %}</div>
+              <a class="research-title" href="/research/{{ r.id }}">{{ r.goal_title }} · report #{{ r.id }}</a>
+              <div class="research-excerpt">{{ r.summary[:540] }}{% if r.summary | length > 540 %}…{% endif %}</div>
+            </article>
+            {% else %}
+            <p class="empty">No reports match this view.</p>
+            {% endfor %}
+          </section>
+        </div>
+
+        <div class="lower-grid">
+          <section aria-labelledby="runs-heading">
+            <div class="section-head"><div><div class="section-kicker">03 / Operations</div><h2 id="runs-heading">Run history</h2></div></div>
+            {% for run in runs %}
+            <div class="activity-row"><div><div class="activity-title">#{{ run.id }} · {{ run.goal_title }} · {{ run.status }}</div><div class="activity-meta">{{ run.completed_goals }}/{{ run.total_goals }} goals · {{ run.trigger }}</div></div><time class="activity-meta">{{ run.created_at.strftime('%Y-%m-%d %H:%M') }}</time></div>
+            {% else %}<p class="empty">No runs recorded.</p>{% endfor %}
+          </section>
+          <section aria-labelledby="email-heading">
+            <div class="section-head"><div><div class="section-kicker">04 / Correspondence</div><h2 id="email-heading">Sent email</h2></div></div>
+            {% for email in emails %}
+            <div class="activity-row"><div class="activity-title">{{ email.subject }}</div><time class="activity-meta">{{ email.created_at.strftime('%Y-%m-%d %H:%M') }}</time></div>
+            {% else %}<p class="empty">No emails sent.</p>{% endfor %}
+          </section>
+        </div>
+      </main>
+      <footer class="footer"><span>SISYPHUS · RESEARCH DESK</span><a href="/health">System status</a></footer>
+    </div>
+    <script>
+      const runStatus = document.getElementById("run-status");
+      const runDetail = document.getElementById("run-detail");
+      const runProgress = document.getElementById("run-progress");
+      async function refreshRunStatus() {
+        try {
+          const response = await fetch("/runs/status", { headers: { Accept: "application/json" } });
+          if (!response.ok) return;
+          const data = await response.json();
+          const run = data.active || data.latest;
+          if (!run) return;
+          runStatus.dataset.status = run.status;
+          runStatus.querySelector(".run-title").textContent = data.active
+            ? `Research run #${run.id} · ${run.status}`
+            : `Last run · ${run.status}`;
+          runDetail.textContent = data.active
+            ? (run.current_goal_title ? `Working on ${run.current_goal_title}` : "Preparing research queue")
+            : `${run.goal_title} · ${run.finished_at ? `finished ${run.finished_at}` : "not started"}`;
+          runProgress.textContent = run.total_goals ? `${run.completed_goals}/${run.total_goals} goals` : "";
+        } catch { }
+      }
+      window.setInterval(refreshRunStatus, 5000);
+    </script>
+  </body>
+</html>

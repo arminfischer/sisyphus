@@ -25,5 +25,6 @@ uvicorn[standard]>=0.54.0
 jinja2>=3.1.5
 python-multipart>=0.0.32
 markdown>=3.11.2
+bleach>=6.2.0
 # Config
 pydantic-settings>=2.16.1

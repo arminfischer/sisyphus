@@ -38,14 +38,21 @@ def add_document(doc_id: str, text: str, metadata: dict | None = None) -> None:
     col.upsert(ids=[doc_id], documents=[text], metadatas=[metadata or {}])
 
 
-def search(query: str, n_results: int = 5) -> list[dict]:
+def search(
+    query: str,
+    n_results: int = 5,
+    where: dict[str, Any] | None = None,
+) -> list[dict]:
     """Return top-n semantically similar documents."""
     col = _get_collection()
     count = col.count()
     if count == 0:
         return []
     actual_n = min(n_results, count)
-    results = col.query(query_texts=[query], n_results=actual_n)
+    query_options = {"query_texts": [query], "n_results": actual_n}
+    if where is not None:
+        query_options["where"] = where
+    results = col.query(**query_options)
     output = []
     for i, doc in enumerate(results["documents"][0]):
         output.append(

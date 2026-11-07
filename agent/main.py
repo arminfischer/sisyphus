@@ -10,7 +10,6 @@ Starts:
 """
 
 import logging
-import re
 import threading
 import time
 from datetime import datetime, timezone
@@ -19,20 +18,18 @@ import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from sqlalchemy import func
 
 from agent.config import settings
 from agent.email_handler import (
     fetch_unread_feedback,
     send_daily_report,
-    send_feedback_request,
 )
 from agent.goals import (
     load_goals,
     update_goals_from_feedback,
 )
-from agent.graph import run_research_cycle
 from agent.memory.db import ResearchLog, get_session, init_db
+from agent.research_runner import run_scheduled_research
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,55 +65,7 @@ def check_inbox() -> None:
 
 
 def run_research() -> None:
-    goals = load_goals()
-    if not goals:
-        log.info("No active goals — nothing to research.")
-        return
-
-    goals = _prioritize_goals_by_research_age(goals)
-
-    for goal in goals:
-        log.info(f"Starting research cycle: {goal['title']!r}")
-        try:
-            summary, needs_feedback = run_research_cycle(goal)
-            if needs_feedback:
-                match = re.search(r"FEEDBACK_NEEDED:\s*(.+)", summary)
-                question = match.group(1).strip() if match else "General input needed."
-                send_feedback_request(
-                    goal["title"],
-                    f"Goal: {goal['title']}\n\n"
-                    f"Context: {goal.get('description', '')}\n\n"
-                    f"Question: {question}",
-                )
-                log.info(f"Feedback request sent for: {goal['title']!r}")
-        except Exception as exc:
-            log.exception(f"Research cycle failed for {goal['title']!r}: {exc}")
-
-
-def _prioritize_goals_by_research_age(goals: list[dict]) -> list[dict]:
-    """Start scheduled work with objectives that have waited the longest."""
-    goal_ids = [goal["id"] for goal in goals]
-    if not goal_ids:
-        return []
-
-    with get_session() as session:
-        latest_rows = (
-            session.query(ResearchLog.goal_id, func.max(ResearchLog.created_at))
-            .filter(ResearchLog.goal_id.in_(goal_ids))
-            .group_by(ResearchLog.goal_id)
-            .all()
-        )
-    last_researched = dict(latest_rows)
-
-    def sort_key(goal: dict) -> tuple[int, float, int]:
-        latest = last_researched.get(goal["id"])
-        if latest is None:
-            return (0, 0, -goal["priority"])
-        if latest.tzinfo is None:
-            latest = latest.replace(tzinfo=timezone.utc)
-        return (1, latest.timestamp(), -goal["priority"])
-
-    return sorted(goals, key=sort_key)
+    run_scheduled_research()
 
 
 def _compile_daily_report() -> str:

@@ -1,6 +1,6 @@
 # Sisyphus
 
-A persistent research agent. Runs on a schedule in Docker, uses OpenRouter's GPT-OSS 20B model, builds a growing memory database, and communicates via email.
+A persistent research agent. Runs on a schedule in Docker, uses OpenRouter's GPT-OSS 20B model, builds a growing memory database, and communicates via email and dashboard chat.
 
 ---
 
@@ -41,16 +41,19 @@ sisyphus/
 ├── requirements.txt
 ├── .env.example
 ├── publish.ps1              # deploy to Synology
+├── fetch-prod-db.ps1         # copy production SQLite to local data/
+├── push-prod-db.ps1          # copy local SQLite to production
 ├── data/
 │   └── (sqlite db + chroma vectors — created at runtime)
 └── agent/
     ├── config.py            # all settings (pydantic-settings + .env)
     ├── goals.py             # goal CRUD + LLM-driven updates from feedback
+    ├── research_runner.py   # shared scheduled/manual run coordinator
     ├── email_handler.py     # Gmail SMTP send + IMAP receive
     ├── graph.py             # LangGraph agent loop
     ├── main.py              # scheduler (APScheduler) + startup checks
     ├── memory/
-    │   ├── db.py            # SQLite schema (goals, research_log, emails)
+    │   ├── db.py            # SQLite schema (goals, research, email, run, and chat history)
     │   └── vector.py        # ChromaDB semantic memory
     ├── tools/
     │   ├── web_search.py    # DuckDuckGo (no API key required)
@@ -58,7 +61,9 @@ sisyphus/
     └── dashboard/
         ├── app.py           # FastAPI dashboard and objective controls
         └── templates/
-            └── index.html
+            ├── dashboard.html
+            ├── chat.html
+            └── research_detail.html
 ```
 
 ---
@@ -182,6 +187,20 @@ The remote command uses `ssh -tt` so `sudo` can prompt in the terminal when need
 
 The live `data/` directory and `.env` on the NAS are **never overwritten** by the publish script.
 
+### Production database sync
+
+The database scripts use the mapped `D:\sisyphus` share directly; SSH is not needed for file transfer.
+
+```powershell
+# Copy production data/sisyphus.db to local data/
+.\fetch-prod-db.ps1
+
+# Copy local data/sisyphus.db to production
+.\push-prod-db.ps1
+```
+
+Stop both the local agent and the production container before copying SQLite files. Fetch asks before replacing an existing local database and saves a timestamped `.bak` copy. Push asks before replacing production, saves the current production database and any WAL/SHM sidecars beside it, then copies the local database. Both scripts accept `-TargetPath` and `-LocalPath`. These scripts transfer SQLite only; ChromaDB vector memory remains on the NAS.
+
 ---
 
 ## How Sisyphus Works
@@ -216,7 +235,7 @@ For a URL supplied directly in a goal, the agent can use `read_webpage` to fetch
 
 ### Goal management
 
-Goals are stored in SQLite and managed entirely through the dashboard UI or email.
+Goals are stored in SQLite and managed through the dashboard UI, chat, or email.
 
 Each goal has:
 
@@ -236,11 +255,11 @@ To add or change goals:
 
 Web UI at `http://nas-ip:7070`:
 
-- Active and paused objectives, with per-objective research history
-- Configured research cadence
-- Recent research log (last 10 entries) with source links on detail pages
-- Emails sent (last 5)
-- Memory document count
+- Research desk with active/paused objectives, edit controls, per-goal run buttons, and run-all
+- Live progress for scheduled and manual runs, including the current objective
+- Searchable research log with objective filtering and linked full reports
+- Persistent Ask/Steer chat: use **All goals** for cross-objective questions or open **Chat** on an objective for its own history and research context; Ask lists goals from SQLite and cites report findings, while Steer updates goals or accepts `run all`, `run this goal`, `run goal <id>`, and exact goal titles
+- Recent run history, sent email, cadence, and memory document count
 
 API endpoints:
 
@@ -250,3 +269,8 @@ API endpoints:
 | `GET /log?limit=20` | Research log as JSON |
 | `GET /memory/search?q=...` | Semantic memory search |
 | `GET /health` | Health check + memory count |
+| `POST /runs` | Start research for all active goals or one `goal_id` |
+| `GET /runs/status` | Latest run and live progress |
+| `GET /chat` | Chat interface |
+| `POST /chat/send` | Send a chat message (`ask` or `steer` mode); optional `goal_id` scopes its thread and research |
+| `POST /chat/clear` | Clear saved chat history |
