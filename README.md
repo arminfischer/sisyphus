@@ -83,7 +83,7 @@ Key variables:
 | `LLM_BASE_URL` | OpenRouter API endpoint, `https://openrouter.ai/api/v1` |
 | `LLM_MODEL` | OpenRouter model id, `openai/gpt-oss-20b` |
 | `LLM_API_KEY` | Required OpenRouter API key |
-| `WEB_FETCH_ALLOWED_HOSTS` | Comma-separated exact `host:port` allowlist for direct page reads |
+| `WEB_FETCH_ALLOWED_HOSTS` | Optional comma-separated exact `host:port` exceptions for trusted private/local page reads; public hosts need no entry |
 | `GMAIL_USER` | Dedicated agent Gmail account |
 | `GMAIL_APP_PASSWORD` | Gmail App Password (see below) |
 | `NOTIFY_EMAIL` | Where to send reports and feedback requests |
@@ -226,7 +226,7 @@ The agent plans, calls `web_search` / `read_pdf` as needed, then writes findings
 
 A **self-critique** step runs before results are stored: an independent LLM call reviews the summary against the goal and its rationale. Each pass has a 12-turn research budget; reaching it triggers a synthesis rather than storing a partial tool-call response. If review finds gaps, the agent gets another bounded pass, up to 2 critique retries. Objectives remain active across scheduled runs, with previous research used as a baseline.
 
-For a URL supplied directly in a goal, the agent can use `read_webpage` to fetch HTML, JSON, XML, CSV, or plain text. Direct fetches are disabled unless the exact host and port are listed in `WEB_FETCH_ALLOWED_HOSTS`; redirects are checked against the same allowlist. For example, `http://192.168.2.138:3030/` is enabled by `WEB_FETCH_ALLOWED_HOSTS=192.168.2.138:3030`. The tool extracts page text, ignores scripts, and caps response size. Page content is treated as untrusted evidence, not instructions.
+For a URL supplied directly in a goal, the agent can use `read_webpage` to fetch HTML, JSON, XML, CSV, or plain text from any publicly routable host. DNS results are validated and pinned to prevent a public hostname from resolving to a private address; redirects are checked independently. Local/private services remain blocked unless their exact host and port are listed in `WEB_FETCH_ALLOWED_HOSTS`. For example, `http://192.168.2.138:3030/` is enabled by `WEB_FETCH_ALLOWED_HOSTS=192.168.2.138:3030`. The tool extracts page text, ignores scripts, caps response size, and treats page content as untrusted evidence rather than instructions.
 
 ### Memory
 
