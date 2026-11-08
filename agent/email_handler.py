@@ -50,7 +50,9 @@ class _PlainTextEmailParser(HTMLParser):
 def _html_to_plain_text(content: str) -> str:
     parser = _PlainTextEmailParser()
     parser.feed(content)
-    return "\n".join(line.rstrip() for line in "".join(parser.parts).splitlines()).strip()
+    return "\n".join(
+        line.rstrip() for line in "".join(parser.parts).splitlines()
+    ).strip()
 
 
 # ── Send ──────────────────────────────────────────────────────────────────────
