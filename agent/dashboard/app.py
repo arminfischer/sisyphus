@@ -102,6 +102,7 @@ async def dashboard(request: Request, q: str = "", goal_id: int | None = None):
                 "goal_id": r.goal_id,
                 "goal_title": goal_titles.get(r.goal_id, "Former objective"),
                 "summary": r.summary,
+                "summary_html": _render_chat_markdown((r.summary or "")[:540]),
                 "created_at": r.created_at,
             }
             for r in recent_research

@@ -6,6 +6,10 @@ import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime, timezone
+from html.parser import HTMLParser
+
+import bleach
+import markdown
 
 from agent.config import settings
 from agent.memory.db import get_session, EmailLog
@@ -13,10 +17,51 @@ from agent.memory.db import get_session, EmailLog
 log = logging.getLogger("sisyphus.email")
 
 
+class _PlainTextEmailParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+        self.links: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "li":
+            self.parts.append("\n- ")
+        elif tag in {"br", "hr", "p", "pre", "blockquote", "tr"} or tag.startswith("h"):
+            self.parts.append("\n")
+        elif tag in {"td", "th"}:
+            self.parts.append("\t")
+        elif tag == "a":
+            self.links.append(dict(attrs).get("href") or "")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"li", "p", "pre", "blockquote", "tr"} or tag.startswith("h"):
+            self.parts.append("\n")
+        elif tag in {"td", "th"}:
+            self.parts.append("\t")
+        elif tag == "a" and self.links:
+            href = self.links.pop()
+            if href:
+                self.parts.append(f" ({href})")
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+
+def _html_to_plain_text(content: str) -> str:
+    parser = _PlainTextEmailParser()
+    parser.feed(content)
+    return "\n".join(line.rstrip() for line in "".join(parser.parts).splitlines()).strip()
+
+
 # ── Send ──────────────────────────────────────────────────────────────────────
 
 
-def send_email(subject: str, body: str, to: str | None = None) -> None:
+def send_email(
+    subject: str,
+    body: str,
+    to: str | None = None,
+    html_body: str | None = None,
+) -> None:
     to = to or settings.notify_email
 
     msg = MIMEMultipart("alternative")
@@ -25,6 +70,8 @@ def send_email(subject: str, body: str, to: str | None = None) -> None:
     msg["To"] = to
     msg["Reply-To"] = settings.gmail_user
     msg.attach(MIMEText(body, "plain", "utf-8"))
+    if html_body is not None:
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
         smtp.ehlo()
@@ -40,7 +87,54 @@ def send_email(subject: str, body: str, to: str | None = None) -> None:
 
 def send_daily_report(report: str) -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    send_email(f"[Sisyphus] Daily Report — {now}", report)
+    rendered = markdown.markdown(
+        report,
+        extensions=["fenced_code", "tables", "sane_lists"],
+    )
+    safe_html = bleach.clean(
+        rendered,
+        tags={
+            "a",
+            "blockquote",
+            "br",
+            "code",
+            "del",
+            "em",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "hr",
+            "li",
+            "ol",
+            "p",
+            "pre",
+            "s",
+            "strong",
+            "table",
+            "tbody",
+            "td",
+            "th",
+            "thead",
+            "tr",
+            "ul",
+        },
+        attributes={"a": ["href", "title"], "td": ["align"], "th": ["align"]},
+        protocols={"http", "https", "mailto"},
+        strip=True,
+        strip_comments=True,
+    )
+    html_body = (
+        '<html><body style="font-family:Arial,sans-serif;line-height:1.6">'
+        f"{safe_html}</body></html>"
+    )
+    send_email(
+        f"[Sisyphus] Daily Report — {now}",
+        _html_to_plain_text(safe_html),
+        html_body=html_body,
+    )
 
 
 def send_feedback_request(topic: str, context: str) -> None:

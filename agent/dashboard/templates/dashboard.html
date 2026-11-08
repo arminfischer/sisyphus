@@ -929,8 +929,7 @@
                 >{{ r.goal_title }} · report #{{ r.id }}</a
               >
               <div class="research-excerpt">
-                {{ r.summary[:540] }}{% if r.summary | length > 540 %}…{% endif
-                %}
+                {{ r.summary_html | safe }}{% if r.summary | length > 540 %}…{% endif %}
               </div>
             </article>
             {% else %}
